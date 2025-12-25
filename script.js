@@ -1,389 +1,355 @@
-/*
- * Gestion du suivi des séances de natation.
- *
- * Ce fichier gère la collecte des données via le formulaire,
- * l'enregistrement en local (localStorage), l'affichage
- * dynamique des séances dans un tableau ainsi que les
- * fonctionnalités d'exportation (CSV/JSON) et de suppression.
- */
+/* swim_app - script.js (Google Sheets sync + dropdown UI + matin/soir) */
 
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('session-form');
-  const sessionsTable = document.getElementById('sessions-table');
-  const sessionsBody = sessionsTable.querySelector('tbody');
-  const noSessions = document.getElementById('no-sessions');
-  const exportCsvBtn = document.getElementById('export-csv');
-  const exportJsonBtn = document.getElementById('export-json');
-  const clearDataBtn = document.getElementById('clear-data');
-  const submitBtn = document.getElementById('submit-btn');
-  const syncStatus = document.getElementById('sync-status');
+document.addEventListener("DOMContentLoaded", () => {
+  // ====== CONFIG ======
+  const SYNC_ENDPOINT =
+    "https://script.google.com/macros/s/AKfycbwYV8nDCmm6LbYtZRlmLRPepd1eH2qd9D909i8UCcJCTjRiGzo4OiNKgRWtX4rUmIhYgQ/exec?token=ersteinaquaticclub2026";
 
-  // Gestion du nom du nageur : zones de saisie et d'affichage
-  const athleteNameWrapper = document.getElementById('athleteNameWrapper');
-  const storedNameDisplay = document.getElementById('storedNameDisplay');
-  const storedNameEl = document.getElementById('storedName');
-  const changeNameBtn = document.getElementById('changeName');
+  const STORAGE_SESSIONS_KEY = "swimSessions";
+  const STORAGE_NAME_KEY = "swimmerName";
 
-  // Les champs de saisie (durée, RPE, etc.) sont des listes déroulantes (select)
-  // pour limiter l'usage du clavier et guider le nageur avec des libellés.
+  // ====== DOM ======
+  const form = document.getElementById("session-form");
 
-  // Point d'API pour la synchronisation automatique (Google Apps Script Web App)
-  // IMPORTANT : le token doit correspondre à SHARED_TOKEN dans Apps Script.
- const SYNC_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbwYV8nDCmm6LbYtZRlmLRPepd1eH2qd9D909i8UCcJCTjRiGzo4OiNKgRWtX4rUmIhYgQ/exec?token=ersteinaquaticclub2026";
+  const athleteNameInput = document.getElementById("athleteName");
+  const sessionDateInput = document.getElementById("sessionDate");
+  const timeSlotSelect = document.getElementById("timeSlot"); // "matin" / "soir"
 
-  // Tableau interne pour stocker les séances chargées depuis le localStorage
+  const durationSelect = document.getElementById("duration");
+  const rpeSelect = document.getElementById("rpe");
+  const performanceSelect = document.getElementById("performance");
+  const engagementSelect = document.getElementById("engagement");
+  const fatigueSelect = document.getElementById("fatigue");
+  const commentsInput = document.getElementById("comments");
+
+  const sessionsTable = document.getElementById("sessions-table");
+  const sessionsBody = sessionsTable ? sessionsTable.querySelector("tbody") : null;
+  const noSessions = document.getElementById("no-sessions");
+
+  const exportCsvBtn = document.getElementById("export-csv");
+  const exportJsonBtn = document.getElementById("export-json");
+  const clearDataBtn = document.getElementById("clear-data");
+
+  const statusEl = document.getElementById("status");
+
+  // ====== STATE ======
   let sessions = [];
 
-  /**
-   * Charge les séances stockées depuis le localStorage. Si aucune donnée
-   * n'est trouvée, initialise un tableau vide.
-   */
+  // ====== Helpers ======
+  function setStatus(message, type = "info") {
+    if (!statusEl) return;
+    statusEl.textContent = message || "";
+    statusEl.dataset.type = type; // si tu veux styler via CSS
+    statusEl.classList.toggle("hidden", !message);
+  }
+
+  function safeParseInt(val) {
+    const n = parseInt(String(val), 10);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function todayISODate() {
+    // YYYY-MM-DD
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
   function loadSessions() {
-    const stored = localStorage.getItem('swimSessions');
+    const raw = localStorage.getItem(STORAGE_SESSIONS_KEY);
     try {
-      sessions = stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      console.error('Erreur lors du chargement des données :', e);
+      sessions = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(sessions)) sessions = [];
+    } catch {
       sessions = [];
     }
-    updateTable();
   }
 
-  /**
-   * Enregistre la liste des séances dans le localStorage.
-   */
   function saveSessions() {
-    localStorage.setItem('swimSessions', JSON.stringify(sessions));
+    localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(sessions));
   }
 
-  /**
-   * Charge et affiche le nom du nageur depuis le localStorage. Si un nom est
-   * stocké, l'input de saisie est masqué et remplacé par un affichage
-   * en lecture seule avec un bouton pour changer le nom.
-   */
-  function loadStoredName() {
-    const stored = localStorage.getItem('swimmerName');
-    if (stored) {
-      athleteNameWrapper.classList.add('hidden');
-      storedNameDisplay.classList.remove('hidden');
-      storedNameEl.textContent = stored;
-      // Important : certains navigateurs bloquent l'envoi du formulaire
-      // si un champ requis (même masqué) est vide. On garde l'input rempli
-      // et on le désactive pour éviter toute saisie clavier.
-      if (form.athleteName) {
-        form.athleteName.value = stored;
-        form.athleteName.disabled = true;
-      }
-    } else {
-      athleteNameWrapper.classList.remove('hidden');
-      storedNameDisplay.classList.add('hidden');
-      if (form.athleteName) {
-        form.athleteName.disabled = false;
-      }
-    }
+  function computeTrainingLoad(duration, rpe) {
+    const d = Number(duration);
+    const r = Number(rpe);
+    if (!Number.isFinite(d) || !Number.isFinite(r)) return "";
+    return d * r;
   }
 
-  function setStatus(message, kind) {
-    if (!syncStatus) return;
-    syncStatus.textContent = message || '';
-    syncStatus.classList.remove('ok', 'err');
-    if (kind) syncStatus.classList.add(kind);
-    // Masquer le bloc quand il n'y a pas de message (évite un faux état d'erreur)
-    syncStatus.style.display = message ? 'block' : 'none';
-  }
-
-  /**
-   * Envoie la séance à un service distant si un point de synchronisation est
-   * défini. Cette fonction utilise fetch pour effectuer un POST vers
-   * SYNC_ENDPOINT avec les données de la séance. En cas d'échec,
-   * l'erreur est simplement journalisée sans bloquer l'enregistrement local.
-   * @param {Object} session Les données de la séance à synchroniser
-   */
-  async function syncSession(session) {
-    if (!SYNC_ENDPOINT) {
-      return;
-    }
-    // Apps Script Web App : envoyer le JSON en *texte* pour éviter le preflight CORS
-    // et suivre les redirections (Apps Script renvoie souvent un 302).
+  function formatDateForDisplay(yyyyMmDd) {
+    // affiche en format local “JJ/MM/AAAA” selon le navigateur
     try {
-      const response = await fetch(SYNC_ENDPOINT, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
-      body: JSON.stringify({
-        ...session,
-        userAgent: navigator.userAgent
-      })
-      });
-
-      const text = await response.text();
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} — ${text}`);
-      }
-      if (text.trim() !== 'OK') {
-        throw new Error(text.trim() || 'Réponse inattendue');
-      }
-      setStatus('✅ Séance enregistrée et envoyée au coach', 'ok');
-    } catch (error) {
-      console.error('Erreur lors de la synchronisation :', error);
-      setStatus('⚠️ Séance enregistrée sur le téléphone, mais envoi au coach impossible (réseau / token / droits).', 'err');
+      const [y, m, d] = String(yyyyMmDd).split("-").map((x) => parseInt(x, 10));
+      const dt = new Date(y, (m || 1) - 1, d || 1);
+      return dt.toLocaleDateString();
+    } catch {
+      return yyyyMmDd;
     }
   }
 
-  /**
-   * Met à jour l'affichage du tableau des séances. Affiche ou masque
-   * le tableau et le message d'absence de données selon le cas.
-   */
+  function ensureDefaultDateAndSlot() {
+    if (sessionDateInput && !sessionDateInput.value) {
+      sessionDateInput.value = todayISODate();
+    }
+    if (timeSlotSelect && !timeSlotSelect.value) {
+      // valeur par défaut : matin (à adapter si tu veux)
+      timeSlotSelect.value = "matin";
+    }
+  }
+
+  function applyStoredNameBehavior() {
+    const stored = localStorage.getItem(STORAGE_NAME_KEY);
+    if (stored && athleteNameInput) {
+      // Important : éviter le bug iOS “required + hidden”
+      athleteNameInput.value = stored;
+      athleteNameInput.disabled = true;
+      athleteNameInput.removeAttribute("required");
+    } else if (athleteNameInput) {
+      athleteNameInput.disabled = false;
+      athleteNameInput.setAttribute("required", "required");
+    }
+  }
+
   function updateTable() {
-    sessionsBody.innerHTML = '';
-    if (sessions.length === 0) {
-      sessionsTable.classList.add('hidden');
-      noSessions.classList.remove('hidden');
+    if (!sessionsTable || !sessionsBody || !noSessions) return;
+
+    sessionsBody.innerHTML = "";
+
+    if (!sessions.length) {
+      sessionsTable.classList.add("hidden");
+      noSessions.classList.remove("hidden");
       return;
     }
-    sessionsTable.classList.remove('hidden');
-    noSessions.classList.add('hidden');
-    sessions.forEach((session) => {
-      const tr = document.createElement('tr');
-      // Définit les labels pour chaque colonne afin de faciliter l'affichage sur mobile
-      const labels = [
-        'Nom',
-        'Date',
-        'Durée (min)',
-        'RPE',
-        'Performance',
-        'Engagement',
-        'Fatigue',
-        'Charge',
-        'Commentaires'
-      ];
-      // Nom
-      const nameCell = document.createElement('td');
-      nameCell.textContent = session.athleteName;
-      nameCell.setAttribute('data-label', labels[0]);
-      tr.appendChild(nameCell);
-      // Date et heure (format local lisible)
-      const dateCell = document.createElement('td');
-      let dateStr;
-      try {
-        const date = new Date(session.sessionDate);
-        dateStr = date.toLocaleString(undefined, {
-          dateStyle: 'short',
-          timeStyle: 'short'
-        });
-      } catch (e) {
-        dateStr = session.sessionDate;
+
+    sessionsTable.classList.remove("hidden");
+    noSessions.classList.add("hidden");
+
+    const labels = [
+      "Nom",
+      "Date",
+      "Créneau",
+      "Durée (min)",
+      "RPE",
+      "Performance",
+      "Engagement",
+      "Fatigue",
+      "Charge",
+      "Commentaires",
+    ];
+
+    sessions.forEach((s) => {
+      const tr = document.createElement("tr");
+
+      function td(val, label) {
+        const cell = document.createElement("td");
+        cell.textContent = val == null ? "" : String(val);
+        cell.setAttribute("data-label", label);
+        return cell;
       }
-      dateCell.textContent = dateStr;
-      dateCell.setAttribute('data-label', labels[1]);
-      tr.appendChild(dateCell);
-      // Durée
-      const durationCell = document.createElement('td');
-      durationCell.textContent = session.duration;
-      durationCell.setAttribute('data-label', labels[2]);
-      tr.appendChild(durationCell);
-      // RPE
-      const rpeCell = document.createElement('td');
-      rpeCell.textContent = session.rpe;
-      rpeCell.setAttribute('data-label', labels[3]);
-      tr.appendChild(rpeCell);
-      // Performance perçue
-      const perfCell = document.createElement('td');
-      perfCell.textContent = session.performance;
-      perfCell.setAttribute('data-label', labels[4]);
-      tr.appendChild(perfCell);
-      // Engagement
-      const engagementCell = document.createElement('td');
-      engagementCell.textContent = session.engagement;
-      engagementCell.setAttribute('data-label', labels[5]);
-      tr.appendChild(engagementCell);
-      // Fatigue
-      const fatigueCell = document.createElement('td');
-      fatigueCell.textContent = session.fatigue;
-      fatigueCell.setAttribute('data-label', labels[6]);
-      tr.appendChild(fatigueCell);
-      // Charge d'entraînement (Durée x RPE)
-      const loadCell = document.createElement('td');
-      const load = session.duration * session.rpe;
-      loadCell.textContent = load;
-      loadCell.setAttribute('data-label', labels[7]);
-      tr.appendChild(loadCell);
-      // Commentaires
-      const commentsCell = document.createElement('td');
-      commentsCell.textContent = session.comments || '';
-      commentsCell.setAttribute('data-label', labels[8]);
-      tr.appendChild(commentsCell);
+
+      tr.appendChild(td(s.athleteName, labels[0]));
+      tr.appendChild(td(formatDateForDisplay(s.sessionDate), labels[1]));
+      tr.appendChild(td(s.timeSlot, labels[2]));
+      tr.appendChild(td(s.duration, labels[3]));
+      tr.appendChild(td(s.rpe, labels[4]));
+      tr.appendChild(td(s.performance, labels[5]));
+      tr.appendChild(td(s.engagement, labels[6]));
+      tr.appendChild(td(s.fatigue, labels[7]));
+      tr.appendChild(td(computeTrainingLoad(s.duration, s.rpe), labels[8]));
+      tr.appendChild(td(s.comments || "", labels[9]));
+
       sessionsBody.appendChild(tr);
     });
   }
 
-  /**
-   * Ajoute une nouvelle séance au tableau interne, puis sauvegarde
-   * et met à jour l'affichage.
-   * @param {Object} session Un objet contenant les données de la séance
-   */
-  function addSession(session) {
-    sessions.push(session);
-    saveSessions();
-    updateTable();
+  async function syncSession(session) {
+    if (!SYNC_ENDPOINT) return { ok: false, error: "SYNC_ENDPOINT vide" };
+
+    const res = await fetch(SYNC_ENDPOINT, {
+      method: "POST",
+      redirect: "follow",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+      },
+      body: JSON.stringify({
+        ...session,
+        userAgent: navigator.userAgent,
+      }),
+    });
+
+    const txt = (await res.text()).trim();
+    if (!res.ok) {
+      return { ok: false, error: `HTTP ${res.status}: ${txt}` };
+    }
+    if (txt !== "OK") {
+      return { ok: false, error: txt || "Réponse inattendue" };
+    }
+    return { ok: true };
   }
 
-  // Gestion de la soumission du formulaire
-  form.addEventListener('submit', (event) => {
+  // ====== Actions ======
+  form?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    setStatus('', null);
-    // Récupération et nettoyage des données du formulaire
-    let athleteName;
-    const storedName = localStorage.getItem('swimmerName');
-    if (storedName) {
-      athleteName = storedName;
-    } else {
-      athleteName = form.athleteName.value.trim();
+    setStatus("", "info"); // clear
+
+    // Nom (depuis storage si input désactivé)
+    const storedName = localStorage.getItem(STORAGE_NAME_KEY);
+    const athleteName = storedName || (athleteNameInput?.value || "").trim();
+
+    const sessionDate = sessionDateInput?.value || "";
+    const timeSlot = timeSlotSelect?.value || "";
+
+    const duration = safeParseInt(durationSelect?.value);
+    const rpe = safeParseInt(rpeSelect?.value);
+    const performance = safeParseInt(performanceSelect?.value);
+    const engagement = safeParseInt(engagementSelect?.value);
+    const fatigue = safeParseInt(fatigueSelect?.value);
+    const comments = (commentsInput?.value || "").trim();
+
+    // Validation minimale
+    if (!athleteName) {
+      setStatus("Merci d’indiquer votre nom.", "error");
+      return;
     }
-    const sessionDate = form.sessionDate.value;
-    const timeSlot = form.timeSlot ? form.timeSlot.value : '';
-    const duration = parseInt(form.duration.value, 10);
-    const rpe = parseInt(form.rpe.value, 10);
-    const performance = parseInt(form.performance.value, 10);
-    const engagement = parseInt(form.engagement.value, 10);
-    const fatigue = parseInt(form.fatigue.value, 10);
-    const comments = form.comments.value.trim();
-    // Enregistrer le nom si ce n'est pas déjà fait
-    if (!storedName && athleteName) {
-      localStorage.setItem('swimmerName', athleteName);
-      loadStoredName();
+    if (!sessionDate) {
+      setStatus("Merci de sélectionner une date.", "error");
+      return;
     }
-    if (!athleteName || !sessionDate || !timeSlot || isNaN(duration) || isNaN(rpe)) {
-      // Affiche les erreurs natives si possible
-      if (typeof form.reportValidity === 'function') form.reportValidity();
-      setStatus('Merci de remplir tous les champs obligatoires.', 'err');
+    if (!timeSlot) {
+      setStatus("Merci de choisir Matin ou Soir.", "error");
+      return;
+    }
+    if ([duration, rpe, performance, engagement, fatigue].some((x) => Number.isNaN(x))) {
+      setStatus("Merci de sélectionner toutes les valeurs (durée, RPE, etc.).", "error");
       return;
     }
 
-    const sessionDateLabel = `${sessionDate} (${timeSlot})`;
+    // Mémoriser le nom une fois
+    if (!storedName) {
+      localStorage.setItem(STORAGE_NAME_KEY, athleteName);
+      applyStoredNameBehavior();
+    }
+
     const session = {
       athleteName,
-      sessionDate: sessionDateLabel,
+      sessionDate,  // YYYY-MM-DD
+      timeSlot,     // "matin" / "soir"
       duration,
       rpe,
       performance,
       engagement,
       fatigue,
-      comments
+      comments,
     };
-    addSession(session);
 
-    // Feedback immédiat côté utilisateur
-    if (submitBtn) submitBtn.disabled = true;
-    setStatus('Enregistrement…', null);
+    // Sauvegarde locale immédiate
+    sessions.push(session);
+    saveSessions();
+    updateTable();
 
-    // Synchronisation distante si un endpoint est configuré
-    syncSession(session).finally(() => {
-      if (submitBtn) submitBtn.disabled = false;
-    });
-    // Réinitialiser le formulaire (sauf le nom si enregistré)
-    form.reset();
-
-    // Remettre la date à aujourd'hui pour éviter une saisie manuelle
-    if (form.sessionDate) {
-      form.sessionDate.valueAsDate = new Date();
+    // Sync distante
+    setStatus("Envoi au coach…", "info");
+    try {
+      const result = await syncSession(session);
+      if (result.ok) {
+        setStatus("✅ Séance enregistrée et envoyée au coach.", "success");
+      } else {
+        setStatus(
+          "⚠️ Séance enregistrée sur le téléphone, mais envoi au coach impossible : " +
+            (result.error || "réseau / token / droits"),
+          "error"
+        );
+      }
+    } catch (err) {
+      setStatus(
+        "⚠️ Séance enregistrée sur le téléphone, mais envoi au coach impossible (réseau / token / droits).",
+        "error"
+      );
+      console.error(err);
     }
+
+    // Reset partiel : on garde la date du jour + créneau, et le nom (stocké)
+    if (commentsInput) commentsInput.value = "";
+    ensureDefaultDateAndSlot();
   });
 
-  /**
-   * Transforme les données en chaîne CSV et déclenche un téléchargement.
-   */
-  exportCsvBtn.addEventListener('click', () => {
-    if (sessions.length === 0) {
-      alert('Aucune séance à exporter.');
+  exportCsvBtn?.addEventListener("click", () => {
+    if (!sessions.length) {
+      alert("Aucune séance à exporter.");
       return;
     }
-    // Définition de l'en-tête du CSV
-    const headers = ['Nom', 'Date et heure', 'Durée (min)', 'RPE', 'Performance', 'Engagement', 'Fatigue', 'Charge', 'Commentaires'];
-    const rows = sessions.map((s) => {
-      const date = String(s.sessionDate || '');
-      const load = s.duration * s.rpe;
-      return [
-        s.athleteName,
-        date,
-        s.duration,
-        s.rpe,
-        s.performance,
-        s.engagement,
-        s.fatigue,
-        load,
-        s.comments ? s.comments.replace(/\n/g, ' ') : ''
-      ];
-    });
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const headers = [
+      "Nom",
+      "Date",
+      "Créneau",
+      "Durée (min)",
+      "RPE",
+      "Performance",
+      "Engagement",
+      "Fatigue",
+      "Charge",
+      "Commentaires",
+    ];
+
+    const rows = sessions.map((s) => [
+      s.athleteName,
+      s.sessionDate,
+      s.timeSlot,
+      s.duration,
+      s.rpe,
+      s.performance,
+      s.engagement,
+      s.fatigue,
+      computeTrainingLoad(s.duration, s.rpe),
+      (s.comments || "").replace(/\n/g, " "),
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'suivi_nageurs.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "suivi_natation.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
 
-  /**
-   * Transforme les données en JSON et déclenche un téléchargement.
-   */
-  exportJsonBtn.addEventListener('click', () => {
-    if (sessions.length === 0) {
-      alert('Aucune séance à exporter.');
+  exportJsonBtn?.addEventListener("click", () => {
+    if (!sessions.length) {
+      alert("Aucune séance à exporter.");
       return;
     }
-    const blob = new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json;charset=utf-8;' });
+    const blob = new Blob([JSON.stringify(sessions, null, 2)], {
+      type: "application/json;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'suivi_nageurs.json');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "suivi_natation.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
 
-  /**
-   * Supprime toutes les séances après confirmation de l'utilisateur.
-   */
-  clearDataBtn.addEventListener('click', () => {
-    if (!confirm('Voulez‑vous vraiment supprimer toutes les données enregistrées ?')) {
-      return;
-    }
+  clearDataBtn?.addEventListener("click", () => {
+    if (!confirm("Voulez-vous vraiment supprimer toutes les données enregistrées ?")) return;
     sessions = [];
     saveSessions();
     updateTable();
+    setStatus("Données locales supprimées.", "info");
   });
 
-  // Chargement du nom enregistré
-  loadStoredName();
-
-  // S'assurer que l'état de synchro est neutre au chargement
-  setStatus('', null);
-
-  // Valeur par défaut : date du jour
-  if (form.sessionDate) {
-    form.sessionDate.valueAsDate = new Date();
-  }
-  // Permettre à l'utilisateur de changer son nom enregistré
-  if (changeNameBtn) {
-    changeNameBtn.addEventListener('click', () => {
-      localStorage.removeItem('swimmerName');
-      if (form.athleteName) {
-        form.athleteName.disabled = false;
-        form.athleteName.value = '';
-      }
-      loadStoredName();
-      if (form.athleteName) form.athleteName.focus();
-    });
-  }
-
-  // Initialisation des données au chargement
+  // ====== INIT ======
+  setStatus("", "info"); // éviter tout message au chargement
   loadSessions();
+  applyStoredNameBehavior();
+  ensureDefaultDateAndSlot();
+  updateTable();
 });
