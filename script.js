@@ -3,7 +3,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   // ====== CONFIG ======
   const SYNC_ENDPOINT =
-    "https://script.google.com/macros/s/AKfycbwYV8nDCmm6LbYtZRlmLRPepd1eH2qd9D909i8UCcJCTjRiGzo4OiNKgRWtX4rUmIhYgQ/exec?token=ersteinaquaticclub2026";
+    "https://script.google.com/macros/s/AKfycbwby5u05iYNVzuj7_oGLpFoKeuOrWKYaSrsGKRKS4puazSeTgyj0ZhqnTBUaSFYQb4ZGQ/exec?token=ersteinaquaticclub2026";
 
   const STORAGE_SESSIONS_KEY = "swimSessions";
   const STORAGE_NAME_KEY = "swimmerName";
