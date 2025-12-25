@@ -31,21 +31,26 @@
           <button type="button" id="changeName" class="secondary">Changer de nom</button>
         </div>
         <div class="form-group">
-          <label for="sessionDate">Date et heure de la séance :</label>
-          <input type="datetime-local" id="sessionDate" name="sessionDate" required />
+          <label for="sessionDate">Date de la séance :</label>
+          <input type="date" id="sessionDate" name="sessionDate" required />
+        </div>
+        <div class="form-group">
+          <label for="timeSlot">Créneau :</label>
+          <select id="timeSlot" name="timeSlot" required>
+            <option value="matin" selected>Matin</option>
+            <option value="soir">Soir</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="duration">Durée de la séance</label>
           <select id="duration" name="duration" required>
-            <option value="30">30 min — très court / technique</option>
-            <option value="45">45 min — court</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
             <option value="60" selected>60 min — standard</option>
-            <option value="75">75 min — standard +</option>
+            <option value="75">75 min</option>
             <option value="90">90 min — long</option>
-            <option value="105">105 min — long +</option>
+            <option value="105">105 min</option>
             <option value="120">120 min — très long</option>
-            <option value="150">150 min — exceptionnel</option>
-            <option value="180">180 min — exceptionnel</option>
           </select>
         </div>
 
@@ -53,13 +58,13 @@
           <label for="rpe">Exertion (RPE 1–10)</label>
           <select id="rpe" name="rpe" required>
             <option value="1">1 — très facile (échauffement)</option>
-            <option value="2">2 — facile (aisé)</option>
+            <option value="2">2</option>
             <option value="3">3 — modéré (contrôlé)</option>
-            <option value="4">4 — soutenu (respiration plus marquée)</option>
+            <option value="4">4</option>
             <option value="5" selected>5 — assez dur (travail)</option>
-            <option value="6">6 — dur (concentration nécessaire)</option>
+            <option value="6">6</option>
             <option value="7">7 — très dur (proche seuil)</option>
-            <option value="8">8 — quasi max (répétitions courtes)</option>
+            <option value="8">8</option>
             <option value="9">9 — presque maximal</option>
             <option value="10">10 — maximal (all‑out)</option>
           </select>
@@ -68,55 +73,56 @@
         <div class="form-group">
           <label for="performance">Performance perçue (1–10)</label>
           <select id="performance" name="performance" required>
-            <option value="1">1 — très mauvaise (rien ne va)</option>
-            <option value="2">2 — mauvaise</option>
+            <option value="1">1 — très mauvaise</option>
+            <option value="2">2</option>
             <option value="3">3 — en dessous</option>
-            <option value="4">4 — moyen -</option>
+            <option value="4">4</option>
             <option value="5" selected>5 — moyen</option>
-            <option value="6">6 — correct</option>
+            <option value="6">6</option>
             <option value="7">7 — bon</option>
-            <option value="8">8 — très bon</option>
+            <option value="8">8</option>
             <option value="9">9 — excellent</option>
-            <option value="10">10 — exceptionnel (meilleure forme)</option>
+            <option value="10">10 — exceptionnel</option>
           </select>
         </div>
 
         <div class="form-group">
           <label for="engagement">Engagement (1–10)</label>
           <select id="engagement" name="engagement" required>
-            <option value="1">1 — pas engagé (subi)</option>
-            <option value="2">2 — très faible</option>
+            <option value="1">1 — pas engagé</option>
+            <option value="2">2</option>
             <option value="3">3 — faible</option>
-            <option value="4">4 — moyen -</option>
+            <option value="4">4</option>
             <option value="5" selected>5 — moyen</option>
-            <option value="6">6 — bon</option>
+            <option value="6">6</option>
             <option value="7">7 — très bon</option>
-            <option value="8">8 — excellent (focus)</option>
+            <option value="8">8</option>
             <option value="9">9 — quasi total</option>
-            <option value="10">10 — total (à 100%)</option>
+            <option value="10">10 — total</option>
           </select>
         </div>
 
         <div class="form-group">
           <label for="fatigue">Fatigue en fin de séance (1–10)</label>
           <select id="fatigue" name="fatigue" required>
-            <option value="1">1 — frais (aucune fatigue)</option>
-            <option value="2">2 — légère fatigue</option>
+            <option value="1">1 — frais</option>
+            <option value="2">2</option>
             <option value="3">3 — un peu fatigué</option>
-            <option value="4">4 — fatigue modérée</option>
+            <option value="4">4</option>
             <option value="5" selected>5 — fatigue moyenne</option>
-            <option value="6">6 — fatigué</option>
+            <option value="6">6</option>
             <option value="7">7 — très fatigué</option>
-            <option value="8">8 — épuisé (récupération nécessaire)</option>
+            <option value="8">8</option>
             <option value="9">9 — très épuisé</option>
-            <option value="10">10 — KO (à signaler au coach)</option>
+            <option value="10">10 — KO (à signaler)</option>
           </select>
         </div>
         <div class="form-group">
           <label for="comments">Commentaires (facultatif) :</label>
           <textarea id="comments" name="comments" rows="3" placeholder="Notes complémentaires…"></textarea>
         </div>
-        <button type="submit">Enregistrer la séance</button>
+        <button id="submit-btn" type="submit">Enregistrer la séance</button>
+        <div id="sync-status" class="sync-status" aria-live="polite"></div>
       </form>
       <section id="sessions-section">
         <h2>Mes séances enregistrées</h2>
