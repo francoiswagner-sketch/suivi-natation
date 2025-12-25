@@ -42,6 +42,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const sessionsTable = document.getElementById("sessions-table");
   const sessionsBody = sessionsTable ? sessionsTable.querySelector("tbody") : null;
   const noSessions = document.getElementById("no-sessions");
+  const toggleHistoryBtn = document.getElementById("toggle-history");
+  const historyPanel = document.getElementById("history-panel");
 
   const exportCsvBtn = document.getElementById("export-csv");
   const exportJsonBtn = document.getElementById("export-json");
@@ -112,6 +114,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const mm = String(dt.getMonth() + 1).padStart(2, "0");
     const dd = String(dt.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
+  }
+
+
+  function formatDateDisplay(value) {
+    // Affichage local: DD-MM-YYYY
+    const iso = toISODateString(value);
+    if (!iso) return String(value || "");
+    const [y, m, d] = iso.split("-");
+    return `${d}-${m}-${y}`;
   }
 
   
@@ -248,6 +259,9 @@ function computeLoad(duration, rpe) {
 
     const mine = getMine();
 
+    const MAX_ROWS = 30;
+    const displayList = mine.slice(0, MAX_ROWS);
+
     if (!mine.length) {
       sessionsTable.classList.add("hidden");
       noSessions.classList.remove("hidden");
@@ -271,7 +285,7 @@ function computeLoad(duration, rpe) {
       "Commentaires",
     ];
 
-    mine.forEach((s) => {
+    displayList.forEach((s) => {
       const tr = document.createElement("tr");
 
       function td(val, label) {
@@ -282,7 +296,7 @@ function computeLoad(duration, rpe) {
       }
 
       tr.appendChild(td(s.athleteName, labels[0]));
-      tr.appendChild(td(s.sessionDate, labels[1]));
+      tr.appendChild(td(formatDateDisplay(s.sessionDate), labels[1]));
       tr.appendChild(td(s.timeSlot, labels[2]));
       tr.appendChild(td(s.duration, labels[3]));
       tr.appendChild(td(s.distance ? `${s.distance} m` : "", labels[4]));
@@ -316,6 +330,9 @@ function computeLoad(duration, rpe) {
     if (!kpisEl) return;
 
     const mine = getMine();
+
+    const MAX_ROWS = 30;
+    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) {
       kpisEl.innerHTML = "";
       return;
@@ -507,13 +524,16 @@ if (opts && Array.isArray(opts.zones) && opts.zones.length) {
       .forEach((i) => {
         const p = points[i];
         const px = xToPx(p.x.getTime());
-        const label = p.date.slice(5); // MM-DD
+        const label = formatDateDisplay(p.date);
         ctx.fillText(label, px, padT + plotH + Math.round(18 * (window.devicePixelRatio || 1)));
       });
   }
 
   function renderCharts() {
     const mine = getMine();
+
+    const MAX_ROWS = 30;
+    const displayList = mine.slice(0, MAX_ROWS);
     const inRange = filterByDays(mine, rangeDays);
 
     const rpePts = groupDailyAverage(inRange, "rpe");
@@ -696,7 +716,24 @@ const zonesHighGood = [
     ensureDefaults();
   });
 
-  changeNameBtn?.addEventListener("click", () => {
+  
+  // Historique (table) masqué par défaut pour éviter d'afficher tous les imports sous les KPIs
+  if (toggleHistoryBtn && historyPanel) {
+    const syncHistoryButtonLabel = () => {
+      const open = !historyPanel.classList.contains("hidden");
+      toggleHistoryBtn.textContent = open ? "Masquer l’historique" : "Afficher l’historique";
+    };
+    toggleHistoryBtn.addEventListener("click", () => {
+      historyPanel.classList.toggle("hidden");
+      syncHistoryButtonLabel();
+      if (!historyPanel.classList.contains("hidden")) {
+        updateTable();
+      }
+    });
+    syncHistoryButtonLabel();
+  }
+
+changeNameBtn?.addEventListener("click", () => {
     localStorage.removeItem(STORAGE_NAME_KEY);
     applyStoredNameUI();
     setStatus("Nom réinitialisé.", "info");
@@ -728,6 +765,9 @@ const zonesHighGood = [
 
   exportCsvBtn?.addEventListener("click", () => {
     const mine = getMine();
+
+    const MAX_ROWS = 30;
+    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) return alert("Aucune séance à exporter.");
 
     const headers = [
@@ -772,6 +812,9 @@ const zonesHighGood = [
 
   exportJsonBtn?.addEventListener("click", () => {
     const mine = getMine();
+
+    const MAX_ROWS = 30;
+    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) return alert("Aucune séance à exporter.");
 
     const blob = new Blob([JSON.stringify(mine, null, 2)], {
