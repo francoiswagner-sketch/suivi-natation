@@ -66,7 +66,7 @@
         </div>
 
         <div class="form-group">
-          <label for="rpe">Exertion (RPE 1–10)</label>
+          <label for="rpe">Difficulté (1–10)</label>
           <select id="rpe" name="rpe" required>
             <option value="1">1 — très facile (échauffement)</option>
             <option value="2">2</option>
@@ -146,7 +146,37 @@
           </button>
         </div>
 
-        <div id="kpis" class="kpis" aria-live="polite"></div>
+        
+        <div class="kpi-toolbar">
+          <div class="kpi-range" role="tablist" aria-label="Période KPIs">
+            <button type="button" class="range-btn" data-range="7">7 jours</button>
+            <button type="button" class="range-btn" data-range="30">30 jours</button>
+            <button type="button" class="range-btn" data-range="365">365 jours</button>
+          </div>
+        </div>
+
+<div id="kpis" class="kpis" aria-live="polite"></div>
+
+        <div class="charts-grid" aria-label="Graphiques des ressentis">
+          <div class="chart-card">
+            <div class="chart-title">Difficulté</div>
+            <canvas id="chart-rpe" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Performance perçue</div>
+            <canvas id="chart-performance" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Engagement</div>
+            <canvas id="chart-engagement" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Fatigue</div>
+            <canvas id="chart-fatigue" height="160"></canvas>
+          </div>
+        </div>
+
+
 
         <div id="no-sessions" class="info">Aucune séance enregistrée pour le moment.</div>
 
@@ -158,7 +188,7 @@
               <th>Créneau</th>
               <th>Durée (min)</th>
               <th>Km</th>
-              <th>RPE</th>
+              <th>Difficulté</th>
               <th>Performance</th>
               <th>Engagement</th>
               <th>Fatigue</th>
