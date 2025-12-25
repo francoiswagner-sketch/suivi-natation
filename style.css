@@ -1,0 +1,197 @@
+/*
+ * Styles pour l'application de suivi des séances de natation.
+ *
+ * Cette feuille de styles a été conçue pour être simple et
+ * responsive, afin de fonctionner aussi bien sur iPhone que
+ * sur ordinateur. Les couleurs sont neutres et les éléments
+ * suffisamment espacés pour être manipulés facilement sur écran tactile.
+ */
+
+/* Variables de couleurs pour une personnalisation facile */
+:root {
+  --primary-color: #007acc;
+  --secondary-color: #f4f4f4;
+  --danger-color: #d9534f;
+  --text-color: #333;
+  --border-color: #ccc;
+  --radius: 6px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: var(--secondary-color);
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
+header {
+  background: var(--primary-color);
+  color: #fff;
+  padding: 1rem;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 300;
+}
+
+main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Formulaire */
+form#session-form {
+  background: #fff;
+  padding: 1rem;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 1rem;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+button {
+  display: inline-block;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button[type='submit'] {
+  background: var(--primary-color);
+  color: #fff;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+button.secondary {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  color: var(--primary-color);
+}
+
+button.danger {
+  background: var(--danger-color);
+  color: #fff;
+}
+
+/* Tableau des séances */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+thead {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+th,
+td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--secondary-color);
+}
+
+/* Message d'info lorsque aucune séance n'est présente */
+.info {
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  margin: 1rem 0;
+}
+
+/* Classe utilitaire pour masquer un élément */
+.hidden {
+  display: none;
+}
+
+/* Responsive : les colonnes du tableau passent en mode défilement horizontal sur petits écrans */
+@media (max-width: 600px) {
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+  thead {
+    display: none;
+  }
+  tbody tr {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+  }
+  tbody tr:nth-child(even) {
+    background: #fff;
+  }
+  tbody tr td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    border: none;
+    font-size: 0.9rem;
+  }
+  tbody tr td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    margin-right: 0.5rem;
+  }
+}

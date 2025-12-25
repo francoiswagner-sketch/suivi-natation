@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suivi des séances de natation</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Suivi d’entraînement – Natation</h1>
+      <p class="subtitle">Consignez vos séances et vos sensations en quelques clics.</p>
+    </header>
+    <main>
+      <form id="session-form">
+        <div class="form-group">
+          <label for="athleteName">Votre nom :</label>
+          <input type="text" id="athleteName" name="athleteName" placeholder="Nom du nageur" required />
+        </div>
+        <div class="form-group">
+          <label for="sessionDate">Date et heure de la séance :</label>
+          <input type="datetime-local" id="sessionDate" name="sessionDate" required />
+        </div>
+        <div class="form-group">
+          <label for="duration">Durée de la séance (min) :</label>
+          <input type="number" id="duration" name="duration" min="0" required />
+        </div>
+        <div class="form-group">
+          <label for="rpe">Exertion (RPE 1–10) :</label>
+          <select id="rpe" name="rpe" required>
+            <option value="">Choisir…</option>
+            <!-- Options de 1 à 10 -->
+            <option value="1">1 (Très facile)</option>
+            <option value="2">2</option>
+            <option value="3">3 (Modéré)</option>
+            <option value="4">4</option>
+            <option value="5">5 (Difficile mais contrôlé)</option>
+            <option value="6">6</option>
+            <option value="7">7 (Très difficile)</option>
+            <option value="8">8</option>
+            <option value="9">9 (Extrêmement difficile)</option>
+            <option value="10">10 (Effort maximal)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="performance">Performance perçue (1–10) :</label>
+          <input type="number" id="performance" name="performance" min="1" max="10" required />
+        </div>
+        <div class="form-group">
+          <label for="engagement">Engagement (1–10) :</label>
+          <input type="number" id="engagement" name="engagement" min="1" max="10" required />
+        </div>
+        <div class="form-group">
+          <label for="fatigue">Fatigue en fin de séance (1–10) :</label>
+          <input type="number" id="fatigue" name="fatigue" min="1" max="10" required />
+        </div>
+        <div class="form-group">
+          <label for="comments">Commentaires (facultatif) :</label>
+          <textarea id="comments" name="comments" rows="3" placeholder="Notes complémentaires…"></textarea>
+        </div>
+        <button type="submit">Enregistrer la séance</button>
+      </form>
+      <section id="sessions-section">
+        <h2>Mes séances enregistrées</h2>
+        <div id="no-sessions" class="info">Aucune séance enregistrée pour le moment.</div>
+        <table id="sessions-table" class="hidden">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Date</th>
+              <th>Durée (min)</th>
+              <th>RPE</th>
+              <th>Performance</th>
+              <th>Engagement</th>
+              <th>Fatigue</th>
+              <th>Charge</th>
+              <th>Commentaires</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="actions">
+          <button id="export-csv" class="secondary">Exporter en CSV</button>
+          <button id="export-json" class="secondary">Exporter en JSON</button>
+          <button id="clear-data" class="danger">Supprimer toutes les données</button>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <p>
+        Les données sont stockées localement sur votre appareil. Utilisez la fonction
+        d’exportation pour les partager avec votre entraîneur.
+      </p>
+    </footer>
+    <script src="script.js"></script>
+  </body>
+</html>
