@@ -283,8 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const inRange = filterByDays(mine, rangeDays);
-    const last7 = filterByDays(mine, 7);
-
+    
     const sessionsRange = inRange.length;
     const avgRpe = avg(inRange, "rpe");
     const avgPerf = avg(inRange, "performance");
@@ -294,8 +293,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const totalMin = sum(inRange, "duration");
     const totalLoad = inRange.reduce((acc, s) => acc + computeLoad(s.duration, s.rpe), 0);
 
-    const km7 = sum(last7, "distance"); // en mètres
-    const km7Label = km7 ? `${Math.round(km7 / 100) / 10} km` : "—";
+    const dist = sum(inRange, "distance"); // en mètres
+    const distLabel = dist ? `${Math.round(dist / 100) / 10} km` : "—";
 
     const cards = [
       { label: `Séances (${rangeDays}j)`, value: sessionsRange },
@@ -305,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
       { label: `Fatigue moy. (${rangeDays}j)`, value: avgFat != null ? avgFat.toFixed(1) : "—" },
       { label: `Durée totale (${rangeDays}j)`, value: `${totalMin} min` },
       { label: `Charge totale (${rangeDays}j)`, value: Math.round(totalLoad) },
-      { label: `Kilométrage total (7j)`, value: km7Label },
+      { label: `Kilométrage total (${rangeDays}j)`, value: distLabel },
     ];
 
     kpisEl.innerHTML = cards
@@ -344,8 +343,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function resizeCanvasForHiDpi(canvas) {
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
+    // IMPORTANT: utiliser rect.height (CSS) comme référence, sinon le canvas grossit à chaque redraw
     const width = Math.max(1, Math.floor(rect.width * dpr));
-    const height = Math.max(1, Math.floor((canvas.height || rect.height || 160) * dpr));
+    const height = Math.max(1, Math.floor(rect.height * dpr));
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
     return { dpr, width, height };
@@ -482,7 +482,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     const txt = (await res.text()).trim();
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt}`);
-    if (txt !== "OK") throw new Error(txt || "Réponse inattendue");
+    if (!txt.startsWith("OK")) throw new Error(txt || "Réponse inattendue");
   }
 
   async function fetchLatestSessions() {
