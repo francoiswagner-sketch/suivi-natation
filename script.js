@@ -114,7 +114,17 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  function computeLoad(duration, rpe) {
+  
+function formatMinutesAsHours(totalMinutes) {
+  const mins = Number(totalMinutes);
+  if (!Number.isFinite(mins) || mins <= 0) return "0h";
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins - h * 60);
+  if (h <= 0) return `${m} min`;
+  return m > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
+
+function computeLoad(duration, rpe) {
     const d = Number(duration);
     const r = Number(rpe);
     if (!Number.isFinite(d) || !Number.isFinite(r)) return 0;
@@ -331,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
       { label: `Performance moy. (${rangeDays}j)`, value: avgPerf != null ? avgPerf.toFixed(1) : "—" },
       { label: `Engagement moy. (${rangeDays}j)`, value: avgEng != null ? avgEng.toFixed(1) : "—" },
       { label: `Fatigue moy. (${rangeDays}j)`, value: avgFat != null ? avgFat.toFixed(1) : "—" },
-      { label: `Durée totale (${rangeDays}j)`, value: `${totalMin} min` },
+      { label: `Durée totale (${rangeDays}j)`, value: `${formatMinutesAsHours(totalMin)}` },
       { label: `Charge totale (${rangeDays}j)`, value: Math.round(totalLoad) },
       { label: `Kilométrage total (${rangeDays}j)`, value: distLabel },
     ];
@@ -416,6 +426,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const xToPx = (t) => padL + ((t - xMin) / (xMax - xMin)) * plotW;
     const yToPx = (y) => padT + (1 - (y - yMin) / (yMax - yMin)) * plotH;
 
+
+// background zones (optional)
+if (opts && Array.isArray(opts.zones) && opts.zones.length) {
+  ctx.save();
+  const prevAlpha = ctx.globalAlpha;
+  opts.zones.forEach((z) => {
+    const y1 = yToPx(z.to);
+    const y0 = yToPx(z.from);
+    ctx.globalAlpha = ("alpha" in z) ? z.alpha : 0.12;
+    ctx.fillStyle = z.color || "rgba(16,185,129,1)";
+    ctx.fillRect(padL, Math.min(y0, y1), plotW, Math.abs(y1 - y0));
+  });
+  ctx.globalAlpha = prevAlpha;
+  ctx.restore();
+}
+
     // grid lines (y)
     ctx.strokeStyle = "rgba(17,24,39,0.08)";
     ctx.lineWidth = Math.max(1, Math.round(1 * (window.devicePixelRatio || 1)));
@@ -495,10 +521,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const engPts = groupDailyAverage(inRange, "engagement");
     const fatPts = groupDailyAverage(inRange, "fatigue");
 
-    drawLineChart(chartRpe, rpePts, { title: `Difficulté (${rangeDays}j)` });
-    drawLineChart(chartPerformance, perfPts, { title: `Performance (${rangeDays}j)` });
-    drawLineChart(chartEngagement, engPts, { title: `Engagement (${rangeDays}j)` });
-    drawLineChart(chartFatigue, fatPts, { title: `Fatigue (${rangeDays}j)` });
+
+const zonesHighBad = [
+  { from: 1, to: 4, color: "rgba(34,197,94,1)", alpha: 0.12 },   // vert
+  { from: 4, to: 7, color: "rgba(234,179,8,1)", alpha: 0.12 },   // orange
+  { from: 7, to: 10, color: "rgba(239,68,68,1)", alpha: 0.12 },  // rouge
+];
+
+const zonesHighGood = [
+  { from: 1, to: 4, color: "rgba(239,68,68,1)", alpha: 0.12 },   // rouge
+  { from: 4, to: 7, color: "rgba(234,179,8,1)", alpha: 0.12 },   // orange
+  { from: 7, to: 10, color: "rgba(34,197,94,1)", alpha: 0.12 },  // vert
+];
+
+    drawLineChart(chartRpe, rpePts, { title: `Difficulté (${rangeDays}j)`, zones: zonesHighBad });
+    drawLineChart(chartPerformance, perfPts, { title: `Performance (${rangeDays}j)`, zones: zonesHighGood });
+    drawLineChart(chartEngagement, engPts, { title: `Engagement (${rangeDays}j)`, zones: zonesHighGood });
+    drawLineChart(chartFatigue, fatPts, { title: `Fatigue (${rangeDays}j)`, zones: zonesHighBad });
   }
 
   // ====== Sync / Fetch ======
