@@ -37,7 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Point d'API pour la synchronisation automatique (Google Apps Script Web App)
   // IMPORTANT : remplacez VOTRE_TOKEN_SECRET par le même token que dans Apps Script (SHARED_TOKEN).
   const SYNC_ENDPOINT =
-    'https://script.google.com/macros/s/AKfycbwYV8nDCmm6LbYtZRlmLRPepd1eH2qd9D909i8UCcJCTjRiGzo4OiNKgRWtX4rUmIhYgQ/exec?token=VOTRE_TOKEN_SECRET';
+  'https://script.google.com/macros/s/AKfycbwYV8nDCmm6LbYtZRlmLRPepd1eH2qd9D909i8UCcJCTjRiGzo4OiNKgRWtX4rUmIhYgQ/exec?token=ersteinaquaticclub2026';
+
 
   // Tableau interne pour stocker les séances chargées depuis le localStorage
   let sessions = [];
