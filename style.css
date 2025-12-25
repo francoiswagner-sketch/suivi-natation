@@ -1,12 +1,20 @@
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
 :root {
-  --bg: #f5f7fb;
+  --red: #d60000;
+  --black: #111111;
+  --white: #ffffff;
+  --bg: #f5f6f8;
   --card: #ffffff;
-  --text: #111827;
+  --border: #e0e3e8;
+  --text: #1c1e21;
   --muted: #6b7280;
-  --border: #e5e7eb;
-  --primary: #2f6feb;
+
+  --green: #1fa971;
+  --orange: #f59e0b;
   --danger: #dc2626;
-  --radius: 12px;
 }
 
 * {
@@ -15,287 +23,307 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
 }
 
-header {
-  padding: 1.25rem 1rem 0.75rem;
-  text-align: center;
+/* =========================================================
+   HEADER CLUB – ERSTEIN AQUATIC CLUB
+   ========================================================= */
+
+.club-header {
+  background: linear-gradient(
+    135deg,
+    var(--black) 0%,
+    var(--black) 55%,
+    var(--red) 100%
+  );
+  color: var(--white);
+  padding: 20px 16px 24px;
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
-h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.35rem;
+.club-header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-.subtitle {
+.club-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  background: var(--white);
+  border-radius: 50%;
+  padding: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.club-text h1 {
+  font-size: 1.2rem;
   margin: 0;
-  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.4px;
 }
+
+.club-text h2 {
+  font-size: 0.95rem;
+  margin: 2px 0 6px;
+  font-weight: 500;
+  opacity: 0.95;
+}
+
+.club-text p {
+  font-size: 0.8rem;
+  margin: 0;
+  opacity: 0.85;
+}
+
+/* =========================================================
+   MAIN LAYOUT
+   ========================================================= */
 
 main {
-  max-width: 920px;
-  margin: 0 auto;
-  padding: 0.75rem 1rem 2rem;
+  max-width: 900px;
+  margin: -12px auto 40px;
+  padding: 0 16px;
 }
 
-form,
-#sessions-section {
+/* =========================================================
+   FORMULAIRE
+   ========================================================= */
+
+form {
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-#sessions-section {
-  margin-top: 1rem;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
 .form-group {
-  margin-bottom: 0.9rem;
+  margin-bottom: 16px;
 }
 
 label {
   display: block;
+  font-size: 0.85rem;
   font-weight: 600;
-  margin-bottom: 0.35rem;
+  margin-bottom: 6px;
 }
 
 input,
 select,
 textarea {
   width: 100%;
-  padding: 0.6rem 0.7rem;
-  border: 1px solid var(--border);
+  padding: 10px 12px;
+  font-size: 0.95rem;
   border-radius: 10px;
-  font-size: 1rem;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--white);
 }
 
 textarea {
   resize: vertical;
 }
 
-.helper {
-  margin-top: 0.35rem;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
 button {
   border: none;
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  padding: 12px;
   font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
-#submit-btn {
-  width: 100%;
-  background: var(--primary);
-  color: #fff;
-  margin-top: 0.25rem;
+/* Primary */
+button[type="submit"] {
+  background: var(--red);
+  color: white;
+  margin-top: 8px;
 }
 
+/* Secondary */
 button.secondary {
-  background: #eef2ff;
-  color: #1f2937;
+  background: var(--black);
+  color: white;
 }
 
 button.danger {
-  background: #fee2e2;
-  color: #7f1d1d;
+  background: var(--danger);
+  color: white;
 }
 
-.hidden {
-  display: none !important;
-}
+/* =========================================================
+   STATUS MESSAGE
+   ========================================================= */
 
 .sync-status {
-  margin-top: 0.75rem;
-  font-size: 0.95rem;
-  color: var(--muted);
+  margin-top: 12px;
+  font-size: 0.85rem;
 }
 
 .sync-status.success {
-  color: #166534;
+  color: var(--green);
 }
 
 .sync-status.error {
-  color: #9f1239;
+  color: var(--danger);
 }
 
-.info {
-  padding: 0.75rem;
-  border: 1px dashed var(--border);
-  border-radius: 10px;
-  color: var(--muted);
+.sync-status.info {
+  color: var(--orange);
 }
 
-.section-head {
+/* =========================================================
+   KPI TOOLBAR
+   ========================================================= */
+
+.kpi-toolbar {
   display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  justify-content: flex-end;
+  margin-bottom: 12px;
 }
 
-.section-head h2 {
-  margin: 0;
-  font-size: 1.15rem;
+.kpi-range {
+  display: flex;
+  gap: 8px;
 }
 
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.kpi {
+.range-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 0.75rem;
-  background: #fafafa;
+  color: var(--text);
 }
 
-.kpi .label {
-  color: var(--muted);
-  font-size: 0.9rem;
-  margin-bottom: 0.25rem;
+.range-btn.active {
+  background: var(--black);
+  color: var(--white);
 }
 
-.kpi .value {
-  font-size: 1.2rem;
+/* =========================================================
+   KPI GRID
+   ========================================================= */
+
+.kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+.kpi-value {
+  font-size: 1.4rem;
   font-weight: 700;
+}
+
+.kpi-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* =========================================================
+   GRAPHIQUES
+   ========================================================= */
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 12px 12px 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.chart-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* =========================================================
+   HISTORIQUE (MASQUÉ PAR DÉFAUT)
+   ========================================================= */
+
+.hidden {
+  display: none;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+thead {
+  background: var(--black);
+  color: white;
 }
 
 th,
 td {
+  padding: 8px;
   border-bottom: 1px solid var(--border);
-  text-align: left;
-  padding: 0.55rem 0.4rem;
-  vertical-align: top;
+  text-align: center;
 }
 
-th {
-  font-size: 0.92rem;
-  color: #374151;
+tbody tr:nth-child(even) {
+  background: #fafafa;
 }
 
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.9rem;
-}
+/* =========================================================
+   FOOTER
+   ========================================================= */
 
 footer {
-  padding: 1.25rem 1rem 2rem;
   text-align: center;
+  font-size: 0.7rem;
   color: var(--muted);
+  padding: 24px 12px;
 }
 
-@media (max-width: 820px) {
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+/* =========================================================
+   MOBILE OPTIMISATION
+   ========================================================= */
+
+@media (max-width: 480px) {
+  .club-logo {
+    width: 56px;
+    height: 56px;
   }
 
-  table,
-  thead,
-  tbody,
-  th,
-  td,
-  tr {
-    display: block;
+  .club-text h1 {
+    font-size: 1.05rem;
   }
 
-  thead {
-    display: none;
+  .club-text h2 {
+    font-size: 0.85rem;
   }
 
-  tr {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 0.5rem;
-    margin-top: 0.75rem;
-    background: #fff;
+  .kpis-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
-
-  td {
-    border: none;
-    padding: 0.35rem 0;
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  td::before {
-    content: attr(data-label);
-    color: var(--muted);
-    font-weight: 600;
-  }
-}
-
-
-/* KPI range toggle + charts */
-.kpi-toolbar{
-  display:flex;
-  justify-content:flex-end;
-  margin: 0.25rem 0 0.75rem;
-}
-.kpi-range{
-  display:inline-flex;
-  gap:0.35rem;
-  padding:0.25rem;
-  border:1px solid var(--border);
-  border-radius: 999px;
-  background: #fff;
-}
-.range-btn{
-  border:0;
-  background:transparent;
-  padding:0.45rem 0.75rem;
-  border-radius: 999px;
-  font-weight:600;
-  color: var(--muted);
-  cursor:pointer;
-}
-.range-btn.active{
-  background: rgba(47,111,235,0.12);
-  color: var(--primary);
-}
-
-.charts-grid{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap:0.75rem;
-  margin: 0.75rem 0 0.25rem;
-}
-@media (max-width: 720px){
-  .charts-grid{ grid-template-columns: 1fr; }
-}
-.chart-card{
-  background: var(--card);
-  border:1px solid var(--border);
-  border-radius: var(--radius);
-  padding:0.75rem;
-}
-.chart-title{
-  font-weight:700;
-  margin-bottom:0.4rem;
-}
-canvas{
-  width:100%;
-  display:block;
 }
