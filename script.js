@@ -68,7 +68,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function parseISODateToDate(yyyyMmDd) {
-    // yyyy-mm-dd -> Date (local)
     const [y, m, d] = String(yyyyMmDd).split("-").map((x) => parseInt(x, 10));
     return new Date(y, (m || 1) - 1, d || 1);
   }
@@ -121,8 +120,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function populateDistanceOptions() {
     if (!distanceSelect) return;
-    // Ne pas dupliquer si déjà rempli
     if (distanceSelect.querySelector("option[value='2000']")) return;
+
+    // Option vide => kilométrage facultatif
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "— (facultatif)";
+    empty.selected = true;
+    distanceSelect.appendChild(empty);
 
     for (let m = 2000; m <= 7000; m += 100) {
       const opt = document.createElement("option");
@@ -133,7 +138,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function sessionKey(s) {
-    // Clé stable pour éviter les doublons lors de la récupération
     return [
       s.athleteName || "",
       s.sessionDate || "",
@@ -149,12 +153,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function sortSessionsDesc(list) {
     return list.sort((a, b) => {
-      // Date desc, puis matin/soir
       const da = parseISODateToDate(a.sessionDate).getTime();
       const db = parseISODateToDate(b.sessionDate).getTime();
       if (da !== db) return db - da;
-      // Soir après matin (ordre logique de la journée)
-      return (a.timeSlot === "soir" ? 1 : 0) - (b.timeSlot === "soir" ? 1 : 0);
+      return (b.timeSlot === "soir" ? 1 : 0) - (a.timeSlot === "soir" ? 1 : 0);
     });
   }
 
@@ -232,9 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function avg(list, key) {
       if (!list.length) return null;
-      const vals = list
-        .map((s) => Number(s[key]))
-        .filter((v) => Number.isFinite(v));
+      const vals = list.map((s) => Number(s[key])).filter((v) => Number.isFinite(v));
       if (!vals.length) return null;
       return vals.reduce((a, b) => a + b, 0) / vals.length;
     }
@@ -292,6 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (txt !== "OK") throw new Error(txt || "Réponse inattendue");
   }
 
+  // ===== IMPORTANT : version corrigée de la récupération =====
   async function fetchLatestSessions() {
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
     if (!storedName) {
@@ -303,30 +304,29 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // App Script : on utilise doGet avec action=get
-    const url = new URL(SYNC_ENDPOINT);
-    url.searchParams.set("action", "get");
-    url.searchParams.set("athleteName", storedName);
-    url.searchParams.set("limit", "50");
+    // Construction robuste (évite les soucis URL()/searchParams + redirects)
+    const sep = SYNC_ENDPOINT.includes("?") ? "&" : "?";
+    const url =
+      `${SYNC_ENDPOINT}${sep}action=get` +
+      `&athleteName=${encodeURIComponent(storedName)}` +
+      `&limit=50`;
 
     setStatus("Récupération des séances…", "info");
 
-    const res = await fetch(url.toString(), { method: "GET", redirect: "follow" });
+    const res = await fetch(url, { method: "GET", redirect: "follow" });
     const txt = await res.text();
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${txt}`);
-    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt}`);
 
     let data;
     try {
       data = JSON.parse(txt);
     } catch {
-      throw new Error(`Réponse non JSON : ${txt.slice(0, 120)}`);
+      throw new Error(`Réponse non JSON : ${txt.slice(0, 200)}`);
     }
 
-    if (!data || !Array.isArray(data.sessions)) {
-      throw new Error("Format inattendu (sessions manquant)");
+    if (!data || data.ok !== true || !Array.isArray(data.sessions)) {
+      throw new Error(data?.error || "Format inattendu (sessions manquant)");
     }
 
     // Normalisation + dédoublonnage
@@ -336,7 +336,10 @@ document.addEventListener("DOMContentLoaded", () => {
         sessionDate: s.sessionDate,
         timeSlot: s.timeSlot,
         duration: safeInt(s.duration),
-        distance: s.distance ? safeInt(s.distance) : "",
+        distance:
+          s.distance === "" || s.distance === null || s.distance === undefined
+            ? ""
+            : safeInt(s.distance),
         rpe: safeInt(s.rpe),
         performance: safeInt(s.performance),
         engagement: safeInt(s.engagement),
