@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportCsvBtn = document.getElementById('export-csv');
   const exportJsonBtn = document.getElementById('export-json');
   const clearDataBtn = document.getElementById('clear-data');
+  const submitBtn = document.getElementById('submit-btn');
+  const syncStatus = document.getElementById('sync-status');
 
   // Gestion du nom du nageur : zones de saisie et d'affichage
   const athleteNameWrapper = document.getElementById('athleteNameWrapper');
@@ -72,6 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function setStatus(message, kind) {
+    if (!syncStatus) return;
+    syncStatus.textContent = message || '';
+    syncStatus.classList.remove('ok', 'err');
+    if (kind) syncStatus.classList.add(kind);
+  }
+
   /**
    * Envoie la séance à un service distant si un point de synchronisation est
    * défini. Cette fonction utilise fetch pour effectuer un POST vers
@@ -79,13 +88,14 @@ document.addEventListener('DOMContentLoaded', () => {
    * l'erreur est simplement journalisée sans bloquer l'enregistrement local.
    * @param {Object} session Les données de la séance à synchroniser
    */
-  function syncSession(session) {
+  async function syncSession(session) {
     if (!SYNC_ENDPOINT) {
       return;
     }
     // Apps Script Web App : envoyer le JSON en *texte* pour éviter le preflight CORS
     // et suivre les redirections (Apps Script renvoie souvent un 302).
-    fetch(SYNC_ENDPOINT, {
+    try {
+      const response = await fetch(SYNC_ENDPOINT, {
       method: 'POST',
       redirect: 'follow',
       headers: {
@@ -95,16 +105,20 @@ document.addEventListener('DOMContentLoaded', () => {
         ...session,
         userAgent: navigator.userAgent
       })
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Code HTTP inattendu : ${response.status}`);
-        }
-        // Optionnel : gérer la réponse si besoin
-      })
-      .catch((error) => {
-        console.error('Erreur lors de la synchronisation :', error);
       });
+
+      const text = await response.text();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} — ${text}`);
+      }
+      if (text.trim() !== 'OK') {
+        throw new Error(text.trim() || 'Réponse inattendue');
+      }
+      setStatus('✅ Séance enregistrée et envoyée au coach', 'ok');
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation :', error);
+      setStatus('⚠️ Séance enregistrée sur le téléphone, mais envoi au coach impossible (réseau / token / droits).', 'err');
+    }
   }
 
   /**
@@ -208,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Gestion de la soumission du formulaire
   form.addEventListener('submit', (event) => {
     event.preventDefault();
+    setStatus('', null);
     // Récupération et nettoyage des données du formulaire
     let athleteName;
     const storedName = localStorage.getItem('swimmerName');
@@ -217,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       athleteName = form.athleteName.value.trim();
     }
     const sessionDate = form.sessionDate.value;
+    const timeSlot = form.timeSlot ? form.timeSlot.value : '';
     const duration = parseInt(form.duration.value, 10);
     const rpe = parseInt(form.rpe.value, 10);
     const performance = parseInt(form.performance.value, 10);
@@ -228,13 +244,17 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('swimmerName', athleteName);
       loadStoredName();
     }
-    if (!athleteName || !sessionDate || isNaN(duration) || isNaN(rpe)) {
-      alert('Merci de remplir tous les champs obligatoires.');
+    if (!athleteName || !sessionDate || !timeSlot || isNaN(duration) || isNaN(rpe)) {
+      // Affiche les erreurs natives si possible
+      if (typeof form.reportValidity === 'function') form.reportValidity();
+      setStatus('Merci de remplir tous les champs obligatoires.', 'err');
       return;
     }
+
+    const sessionDateLabel = `${sessionDate} (${timeSlot})`;
     const session = {
       athleteName,
-      sessionDate,
+      sessionDate: sessionDateLabel,
       duration,
       rpe,
       performance,
@@ -243,10 +263,22 @@ document.addEventListener('DOMContentLoaded', () => {
       comments
     };
     addSession(session);
+
+    // Feedback immédiat côté utilisateur
+    if (submitBtn) submitBtn.disabled = true;
+    setStatus('Enregistrement…', null);
+
     // Synchronisation distante si un endpoint est configuré
-    syncSession(session);
+    syncSession(session).finally(() => {
+      if (submitBtn) submitBtn.disabled = false;
+    });
     // Réinitialiser le formulaire (sauf le nom si enregistré)
     form.reset();
+
+    // Remettre la date à aujourd'hui pour éviter une saisie manuelle
+    if (form.sessionDate) {
+      form.sessionDate.valueAsDate = new Date();
+    }
   });
 
   /**
@@ -319,6 +351,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Chargement du nom enregistré
   loadStoredName();
+
+  // Valeur par défaut : date du jour
+  if (form.sessionDate) {
+    form.sessionDate.valueAsDate = new Date();
+  }
   // Permettre à l'utilisateur de changer son nom enregistré
   if (changeNameBtn) {
     changeNameBtn.addEventListener('click', () => {
