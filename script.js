@@ -541,123 +541,131 @@ function computeLoad(duration, rpe) {
     ctx.clearRect(0, 0, w, h);
   }
 
-  function drawLineChart(canvas, points, opts) {
+  
+function drawLineChart(canvas, points, opts) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const { width: w, height: h } = resizeCanvasForHiDpi(canvas);
-    clearCanvas(ctx, w, h);
+    if (!ctx) return;
 
-    // empty state
-    if (!points || points.length < 1) {
-      ctx.font = `${Math.round(12 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-      ctx.fillStyle = "#6b7280";
-      ctx.textAlign = "center";
-      ctx.fillText("Pas assez de données", w / 2, h / 2);
-      return;
-    }
+    const { dpr, width, height } = resizeCanvasForHiDpi(canvas);
+    const w = width / dpr;
+    const h = height / dpr;
 
-    const padL = Math.round(38 * (window.devicePixelRatio || 1));
-    const padR = Math.round(14 * (window.devicePixelRatio || 1));
-    const padT = Math.round(16 * (window.devicePixelRatio || 1));
-    const padB = Math.round(26 * (window.devicePixelRatio || 1));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
 
-    const plotW = w - padL - padR;
-    const plotH = h - padT - padB;
+    const zones = (opts && opts.zones) ? opts.zones : null;
 
+    // Drawing area
+    const padL = Math.round(w * 0.08);
+    const padR = Math.round(w * 0.04);
+    const padT = Math.round(h * 0.14);
+    const padB = Math.round(h * 0.18);
+    const plotX = padL;
+    const plotY = padT;
+    const plotW = Math.max(1, w - padL - padR);
+    const plotH = Math.max(1, h - padT - padB);
+
+    // Axis range (always 1..10 for our indicators)
     const yMin = 1;
     const yMax = 10;
 
-    const xMin = points[0].x.getTime();
-    const xMax = points[points.length - 1].x.getTime() || xMin + 1;
+    // Background zones (always draw for readability)
+    if (zones && Array.isArray(zones)) {
+      zones.forEach(z => {
+        const y0 = plotY + ((yMax - z.to) / (yMax - yMin)) * plotH;
+        const y1 = plotY + ((yMax - z.from) / (yMax - yMin)) * plotH;
+        ctx.fillStyle = z.color;
+        ctx.fillRect(plotX, Math.min(y0, y1), plotW, Math.abs(y1 - y0));
+      });
+    }
 
-    const xToPx = (t) => padL + ((t - xMin) / (xMax - xMin)) * plotW;
-    const yToPx = (y) => padT + (1 - (y - yMin) / (yMax - yMin)) * plotH;
-
-
-// background zones (optional)
-if (opts && Array.isArray(opts.zones) && opts.zones.length) {
-  ctx.save();
-  const prevAlpha = ctx.globalAlpha;
-  opts.zones.forEach((z) => {
-    const y1 = yToPx(z.to);
-    const y0 = yToPx(z.from);
-    ctx.globalAlpha = ("alpha" in z) ? z.alpha : 0.12;
-    ctx.fillStyle = z.color || "rgba(16,185,129,1)";
-    ctx.fillRect(padL, Math.min(y0, y1), plotW, Math.abs(y1 - y0));
-  });
-  ctx.globalAlpha = prevAlpha;
-  ctx.restore();
-}
-
-    // grid lines (y)
-    ctx.strokeStyle = "rgba(17,24,39,0.08)";
-    ctx.lineWidth = Math.max(1, Math.round(1 * (window.devicePixelRatio || 1)));
-    for (let y = 2; y <= 10; y += 2) {
-      const py = yToPx(y);
+    // Grid lines (1..10)
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
+    ctx.lineWidth = 1;
+    for (let y = 1; y <= 10; y += 1) {
+      const py = plotY + ((yMax - y) / (yMax - yMin)) * plotH;
       ctx.beginPath();
-      ctx.moveTo(padL, py);
-      ctx.lineTo(padL + plotW, py);
+      ctx.moveTo(plotX, py);
+      ctx.lineTo(plotX + plotW, py);
       ctx.stroke();
     }
 
-    // axes labels (y: 1 and 10)
-    ctx.fillStyle = "#6b7280";
-    ctx.font = `${Math.round(11 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-    ctx.textAlign = "right";
-    ctx.fillText("10", padL - 6, yToPx(10) + 4);
-    ctx.fillText("1", padL - 6, yToPx(1) + 4);
-
-    // title
-    if (opts?.title) {
-      ctx.fillStyle = "#111827";
+    // Title
+    if (opts && opts.title) {
+      ctx.fillStyle = "rgba(0,0,0,0.8)";
+      ctx.font = "600 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
       ctx.textAlign = "left";
-      ctx.font = `${Math.round(12 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-      ctx.fillText(opts.title, padL, padT - 4);
+      ctx.textBaseline = "middle";
+      ctx.fillText(opts.title, plotX, Math.max(10, padT / 2));
     }
 
-    // line
-    ctx.strokeStyle = "rgba(47,111,235,0.9)";
-    ctx.lineWidth = Math.max(2, Math.round(2 * (window.devicePixelRatio || 1)));
+    // No data / single point handling
+    if (!points || points.length === 0) {
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.font = "600 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Aucune donnée sur la période", plotX + plotW / 2, plotY + plotH / 2);
+      return;
+    }
+
+    // Build x scale
+    const xs = points.map(p => p.x instanceof Date ? p.x.getTime() : new Date(p.x).getTime()).filter(t => Number.isFinite(t));
+    const xMin = Math.min(...xs);
+    const xMax = Math.max(...xs);
+    const sameX = xMin === xMax;
+
+    const xToPx = (t) => {
+      if (sameX) return plotX + plotW / 2;
+      return plotX + ((t - xMin) / (xMax - xMin)) * plotW;
+    };
+    const yToPx = (v) => plotY + ((yMax - v) / (yMax - yMin)) * plotH;
+
+    // If only one point: draw a dot + value
+    if (points.length === 1) {
+      const p = points[0];
+      const t = (p.x instanceof Date) ? p.x.getTime() : new Date(p.x).getTime();
+      const x = xToPx(t);
+      const y = yToPx(p.y);
+
+      ctx.fillStyle = "rgba(0,0,0,0.9)";
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = "600 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(String(Math.round(p.y * 10) / 10), x, y - 6);
+      return;
+    }
+
+    // Line
+    ctx.strokeStyle = "rgba(0,0,0,0.9)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
     points.forEach((p, i) => {
-      const px = xToPx(p.x.getTime());
-      const py = yToPx(p.y);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
+      const t = (p.x instanceof Date) ? p.x.getTime() : new Date(p.x).getTime();
+      const x = xToPx(t);
+      const y = yToPx(p.y);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     });
     ctx.stroke();
 
-    // dots
-    ctx.fillStyle = "rgba(47,111,235,1)";
-    const r = Math.max(2, Math.round(2.5 * (window.devicePixelRatio || 1)));
+    // Dots
+    ctx.fillStyle = "rgba(0,0,0,0.95)";
     points.forEach((p) => {
-      const px = xToPx(p.x.getTime());
-      const py = yToPx(p.y);
+      const t = (p.x instanceof Date) ? p.x.getTime() : new Date(p.x).getTime();
+      const x = xToPx(t);
+      const y = yToPx(p.y);
       ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fill();
     });
-
-    // x labels: show first, last, and a few in-between
-    ctx.fillStyle = "#6b7280";
-    ctx.font = `${Math.round(11 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-    ctx.textAlign = "center";
-
-    const labelCount = Math.min(4, points.length);
-    const idxs = new Set([0, points.length - 1]);
-    if (labelCount > 2) {
-      idxs.add(Math.floor(points.length / 3));
-      idxs.add(Math.floor((2 * points.length) / 3));
-    }
-    Array.from(idxs)
-      .sort((a, b) => a - b)
-      .forEach((i) => {
-        const p = points[i];
-        const px = xToPx(p.x.getTime());
-        const label = formatDateDisplay(p.date);
-        ctx.fillText(label, px, padT + plotH + Math.round(18 * (window.devicePixelRatio || 1)));
-      });
   }
+
 
   function renderCharts() {
     const mine = getMine();
