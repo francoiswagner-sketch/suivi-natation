@@ -58,10 +58,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const chartEngagement = document.getElementById("chart-engagement");
   const chartFatigue = document.getElementById("chart-fatigue");
 
+
+  // ====== Coach DOM ======
+  const coachAccessBtn = document.getElementById("coach-access");
+  const coachExitBtn = document.getElementById("coach-exit");
+  const coachSection = document.getElementById("coach-section");
+  const swimmerSection = document.getElementById("sessions-section");
+
+  const coachAthleteSelect = document.getElementById("coach-athlete");
+  const coachRefreshBtn = document.getElementById("coach-refresh");
+
+  const coachKpisEl = document.getElementById("coach-kpis");
+
+  const coachChartRpe = document.getElementById("coach-chart-rpe");
+  const coachChartPerformance = document.getElementById("coach-chart-performance");
+  const coachChartEngagement = document.getElementById("coach-chart-engagement");
+  const coachChartFatigue = document.getElementById("coach-chart-fatigue");
+
+
   // ====== STATE ======
   let sessions = [];
   let rangeDays = Number(localStorage.getItem(STORAGE_RANGE_KEY) || "7");
   if (![7, 30, 365].includes(rangeDays)) rangeDays = 7;
+
+  const COACH_PASSWORD = "David1989";
+  let coachRangeDays = Number(localStorage.getItem("coachRangeDays") || "7");
+  if (![7, 30, 365].includes(coachRangeDays)) coachRangeDays = 7;
+  let coachSessions = [];
 
   // ====== Helpers ======
   function setStatus(message, type = "") {
@@ -181,6 +204,111 @@ function computeLoad(duration, rpe) {
     }
   }
 
+
+
+  // ====== Coach view helpers ======
+  function setCoachMode(enabled) {
+    if (enabled) {
+      coachSection?.classList.remove("hidden");
+      form?.classList.add("hidden");
+      swimmerSection?.classList.add("hidden");
+    } else {
+      coachSection?.classList.add("hidden");
+      form?.classList.remove("hidden");
+      swimmerSection?.classList.remove("hidden");
+    }
+  }
+
+  function ensureCoachOptionsFromSessions() {
+    if (!coachAthleteSelect) return;
+    const names = Array.from(new Set(sessions.map((s) => (s.athleteName || "").trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr'));
+    const current = coachAthleteSelect.value;
+    coachAthleteSelect.innerHTML = '<option value="" selected>— Sélectionner un nageur —</option>' + names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+    if (current && names.includes(current)) coachAthleteSelect.value = current;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
+  }
+
+  async function fetchSessionsFromSheetsFor(athleteName, limit = 200) {
+    const sep = SYNC_ENDPOINT.includes("?") ? "&" : "?";
+    const url =
+      `${SYNC_ENDPOINT}${sep}action=get&athleteName=${encodeURIComponent(athleteName)}&limit=${encodeURIComponent(String(limit))}`;
+
+    const res = await fetch(url, { method: "GET", redirect: "follow" });
+    const txt = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt}`);
+
+    let data;
+    try { data = JSON.parse(txt); } catch { throw new Error(`Réponse non JSON : ${txt.slice(0, 200)}`); }
+    if (!data || data.ok !== true || !Array.isArray(data.sessions)) throw new Error(data?.error || "Format inattendu");
+
+    // Normalisation minimale
+    return data.sessions.map((s) => ({
+      athleteName: (s.athleteName || "").trim(),
+      sessionDate: toISODateString(s.sessionDate),
+      timeSlot: s.timeSlot || "",
+      duration: safeInt(s.duration),
+      distance: (s.distance === "" || s.distance === null || s.distance === undefined) ? "" : safeInt(s.distance),
+      rpe: safeInt(s.rpe),
+      performance: safeInt(s.performance),
+      engagement: safeInt(s.engagement),
+      fatigue: safeInt(s.fatigue),
+      comments: s.comments || "",
+    })).filter((s) => s.athleteName && s.sessionDate && !Number.isNaN(s.duration) && !Number.isNaN(s.rpe));
+  }
+
+  function renderCoachKpisAndCharts() {
+    if (!coachKpisEl) return;
+    const athlete = coachAthleteSelect?.value || "";
+    if (!athlete) {
+      coachKpisEl.innerHTML = '<div class="info">Sélectionnez un nageur pour afficher les KPIs.</div>';
+      drawLineChart(coachChartRpe, [], { title: "Difficulté" });
+      drawLineChart(coachChartPerformance, [], { title: "Performance" });
+      drawLineChart(coachChartEngagement, [], { title: "Engagement" });
+      drawLineChart(coachChartFatigue, [], { title: "Fatigue" });
+      return;
+    }
+
+    const mine = coachSessions.filter((s) => (s.athleteName || "").trim() === athlete);
+    const inRange = filterByDays(mine, coachRangeDays);
+
+    const sessionsRange = inRange.length;
+    const avgRpe = avg(inRange, "rpe");
+    const avgPerf = avg(inRange, "performance");
+    const avgEng = avg(inRange, "engagement");
+    const avgFat = avg(inRange, "fatigue");
+    const totalMin = sum(inRange, "duration");
+    const totalLoad = inRange.reduce((acc, s) => acc + computeLoad(s.duration, s.rpe), 0);
+    const dist = sum(inRange, "distance");
+    const distLabel = dist ? `${Math.round(dist / 100) / 10} km` : "—";
+
+    const cards = [
+      { label: `Séances (${coachRangeDays}j)`, value: sessionsRange },
+      { label: `Difficulté moy. (${coachRangeDays}j)`, value: avgRpe != null ? avgRpe.toFixed(1) : "—" },
+      { label: `Performance moy. (${coachRangeDays}j)`, value: avgPerf != null ? avgPerf.toFixed(1) : "—" },
+      { label: `Engagement moy. (${coachRangeDays}j)`, value: avgEng != null ? avgEng.toFixed(1) : "—" },
+      { label: `Fatigue moy. (${coachRangeDays}j)`, value: avgFat != null ? avgFat.toFixed(1) : "—" },
+      { label: `Durée totale (${coachRangeDays}j)`, value: `${formatMinutesAsHours(totalMin)}` },
+      { label: `Charge totale (${coachRangeDays}j)`, value: Math.round(totalLoad) },
+      { label: `Kilométrage total (${coachRangeDays}j)`, value: distLabel },
+    ];
+
+    coachKpisEl.innerHTML = cards
+      .map((c) => `<div class="kpi"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`)
+      .join("");
+
+    const rpePts = groupDailyAverage(inRange, "rpe");
+    const perfPts = groupDailyAverage(inRange, "performance");
+    const engPts = groupDailyAverage(inRange, "engagement");
+    const fatPts = groupDailyAverage(inRange, "fatigue");
+
+    drawLineChart(coachChartRpe, rpePts, { title: `Difficulté — ${athlete} (${coachRangeDays}j)`, zones: zonesHighBad });
+    drawLineChart(coachChartPerformance, perfPts, { title: `Performance — ${athlete} (${coachRangeDays}j)`, zones: zonesHighGood });
+    drawLineChart(coachChartEngagement, engPts, { title: `Engagement — ${athlete} (${coachRangeDays}j)`, zones: zonesHighGood });
+    drawLineChart(coachChartFatigue, fatPts, { title: `Fatigue — ${athlete} (${coachRangeDays}j)`, zones: zonesHighBad });
+  }
   function ensureDefaults() {
     if (sessionDateInput && !sessionDateInput.value) sessionDateInput.value = todayISODate();
     if (timeSlotSelect && !timeSlotSelect.value) timeSlotSelect.value = "matin";
@@ -247,9 +375,12 @@ function computeLoad(duration, rpe) {
   function updateRangeButtons() {
     if (!rangeBtns.length) return;
     rangeBtns.forEach((b) => {
-      b.classList.toggle("active", Number(b.dataset.range) === rangeDays);
-      b.setAttribute("aria-pressed", Number(b.dataset.range) === rangeDays ? "true" : "false");
+      const scope = b.dataset.scope || "swimmer";
+      const cur = scope === "coach" ? coachRangeDays : rangeDays;
+      b.classList.toggle("active", Number(b.dataset.range) === cur);
+      b.setAttribute("aria-pressed", Number(b.dataset.range) === cur ? "true" : "false");
     });
+  });
   }
 
   // ====== Table ======
@@ -733,6 +864,57 @@ const zonesHighGood = [
     syncHistoryButtonLabel();
   }
 
+
+  // ====== Coach access ======
+  function requestCoachAccess() {
+    const ok = prompt("Mot de passe coach :");
+    if (ok === null) return;
+    if (ok === COACH_PASSWORD) {
+      sessionStorage.setItem("coachAccess", "1");
+      setCoachMode(true);
+      ensureCoachOptionsFromSessions();
+      updateRangeButtons();
+      setStatus("", "");
+      // si un nageur est déjà sélectionné, render
+      renderCoachKpisAndCharts();
+    } else {
+      alert("Mot de passe incorrect.");
+    }
+  }
+
+  coachAccessBtn?.addEventListener("click", () => {
+    requestCoachAccess();
+  });
+
+  coachExitBtn?.addEventListener("click", () => {
+    sessionStorage.removeItem("coachAccess");
+    setCoachMode(false);
+    updateRangeButtons();
+    renderKpis();
+    renderCharts();
+  });
+
+  coachAthleteSelect?.addEventListener("change", () => {
+    renderCoachKpisAndCharts();
+  });
+
+  coachRefreshBtn?.addEventListener("click", async () => {
+    const athlete = coachAthleteSelect?.value || "";
+    if (!athlete) {
+      alert("Sélectionnez un nageur.");
+      return;
+    }
+    try {
+      setStatus("Récupération coach…", "info");
+      coachSessions = await fetchSessionsFromSheetsFor(athlete, 200);
+      renderCoachKpisAndCharts();
+      setStatus("✅ Données coach mises à jour.", "success");
+    } catch (e) {
+      console.error(e);
+      setStatus("⚠️ Impossible de récupérer (coach) : " + (e?.message || "erreur"), "error");
+    }
+  });
+
 changeNameBtn?.addEventListener("click", () => {
     localStorage.removeItem(STORAGE_NAME_KEY);
     applyStoredNameUI();
@@ -755,15 +937,21 @@ changeNameBtn?.addEventListener("click", () => {
     btn.addEventListener("click", () => {
       const days = Number(btn.dataset.range);
       if (![7, 30, 365].includes(days)) return;
-      rangeDays = days;
-      localStorage.setItem(STORAGE_RANGE_KEY, String(rangeDays));
-      updateRangeButtons();
-      renderKpis();
-      renderCharts();
+      const scope = btn.dataset.scope || "swimmer";
+      if (scope === "coach") {
+        coachRangeDays = days;
+        localStorage.setItem("coachRangeDays", String(coachRangeDays));
+        updateRangeButtons();
+        renderCoachKpisAndCharts();
+      } else {
+        rangeDays = days;
+        localStorage.setItem(STORAGE_RANGE_KEY, String(rangeDays));
+        updateRangeButtons();
+        renderKpis();
+        renderCharts();
+      }
     });
-  });
-
-  exportCsvBtn?.addEventListener("click", () => {
+  });exportCsvBtn?.addEventListener("click", () => {
     const mine = getMine();
 
     const MAX_ROWS = 30;
@@ -848,6 +1036,9 @@ changeNameBtn?.addEventListener("click", () => {
   // ====== INIT ======
   setStatus("", "");
   loadSessions();
+  ensureCoachOptionsFromSessions();
+  if (sessionStorage.getItem("coachAccess") === "1") { setCoachMode(true); }
+
   populateDistanceOptions();
   applyStoredNameUI();
   ensureDefaults();
