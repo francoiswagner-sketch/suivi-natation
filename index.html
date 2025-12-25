@@ -13,46 +13,104 @@
     </header>
     <main>
       <form id="session-form">
-        <div class="form-group">
+        <!-- Nom du nageur : stocké et réutilisé pour éviter de le saisir à chaque fois. -->
+        <div id="athleteNameWrapper" class="form-group">
           <label for="athleteName">Votre nom :</label>
-          <input type="text" id="athleteName" name="athleteName" placeholder="Nom du nageur" required />
+          <input
+            type="text"
+            id="athleteName"
+            name="athleteName"
+            placeholder="Nom du nageur"
+            required
+          />
+        </div>
+        <!-- Affichage du nom enregistré avec possibilité de le changer -->
+        <div id="storedNameDisplay" class="form-group hidden">
+          <label>Nom :</label>
+          <span id="storedName"></span>
+          <button type="button" id="changeName" class="secondary">Changer de nom</button>
         </div>
         <div class="form-group">
           <label for="sessionDate">Date et heure de la séance :</label>
           <input type="datetime-local" id="sessionDate" name="sessionDate" required />
         </div>
         <div class="form-group">
-          <label for="duration">Durée de la séance (min) :</label>
-          <input type="number" id="duration" name="duration" min="0" required />
-        </div>
-        <div class="form-group">
-          <label for="rpe">Exertion (RPE 1–10) :</label>
-          <select id="rpe" name="rpe" required>
-            <option value="">Choisir…</option>
-            <!-- Options de 1 à 10 -->
-            <option value="1">1 (Très facile)</option>
-            <option value="2">2</option>
-            <option value="3">3 (Modéré)</option>
-            <option value="4">4</option>
-            <option value="5">5 (Difficile mais contrôlé)</option>
-            <option value="6">6</option>
-            <option value="7">7 (Très difficile)</option>
-            <option value="8">8</option>
-            <option value="9">9 (Extrêmement difficile)</option>
-            <option value="10">10 (Effort maximal)</option>
+          <label for="duration">Durée de la séance</label>
+          <select id="duration" name="duration" required>
+            <option value="30">30 min — très court / technique</option>
+            <option value="45">45 min — court</option>
+            <option value="60" selected>60 min — standard</option>
+            <option value="75">75 min — standard +</option>
+            <option value="90">90 min — long</option>
+            <option value="105">105 min — long +</option>
+            <option value="120">120 min — très long</option>
+            <option value="150">150 min — exceptionnel</option>
+            <option value="180">180 min — exceptionnel</option>
           </select>
         </div>
+
         <div class="form-group">
-          <label for="performance">Performance perçue (1–10) :</label>
-          <input type="number" id="performance" name="performance" min="1" max="10" required />
+          <label for="rpe">Exertion (RPE 1–10)</label>
+          <select id="rpe" name="rpe" required>
+            <option value="1">1 — très facile (échauffement)</option>
+            <option value="2">2 — facile (aisé)</option>
+            <option value="3">3 — modéré (contrôlé)</option>
+            <option value="4">4 — soutenu (respiration plus marquée)</option>
+            <option value="5" selected>5 — assez dur (travail)</option>
+            <option value="6">6 — dur (concentration nécessaire)</option>
+            <option value="7">7 — très dur (proche seuil)</option>
+            <option value="8">8 — quasi max (répétitions courtes)</option>
+            <option value="9">9 — presque maximal</option>
+            <option value="10">10 — maximal (all‑out)</option>
+          </select>
         </div>
+
         <div class="form-group">
-          <label for="engagement">Engagement (1–10) :</label>
-          <input type="number" id="engagement" name="engagement" min="1" max="10" required />
+          <label for="performance">Performance perçue (1–10)</label>
+          <select id="performance" name="performance" required>
+            <option value="1">1 — très mauvaise (rien ne va)</option>
+            <option value="2">2 — mauvaise</option>
+            <option value="3">3 — en dessous</option>
+            <option value="4">4 — moyen -</option>
+            <option value="5" selected>5 — moyen</option>
+            <option value="6">6 — correct</option>
+            <option value="7">7 — bon</option>
+            <option value="8">8 — très bon</option>
+            <option value="9">9 — excellent</option>
+            <option value="10">10 — exceptionnel (meilleure forme)</option>
+          </select>
         </div>
+
         <div class="form-group">
-          <label for="fatigue">Fatigue en fin de séance (1–10) :</label>
-          <input type="number" id="fatigue" name="fatigue" min="1" max="10" required />
+          <label for="engagement">Engagement (1–10)</label>
+          <select id="engagement" name="engagement" required>
+            <option value="1">1 — pas engagé (subi)</option>
+            <option value="2">2 — très faible</option>
+            <option value="3">3 — faible</option>
+            <option value="4">4 — moyen -</option>
+            <option value="5" selected>5 — moyen</option>
+            <option value="6">6 — bon</option>
+            <option value="7">7 — très bon</option>
+            <option value="8">8 — excellent (focus)</option>
+            <option value="9">9 — quasi total</option>
+            <option value="10">10 — total (à 100%)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="fatigue">Fatigue en fin de séance (1–10)</label>
+          <select id="fatigue" name="fatigue" required>
+            <option value="1">1 — frais (aucune fatigue)</option>
+            <option value="2">2 — légère fatigue</option>
+            <option value="3">3 — un peu fatigué</option>
+            <option value="4">4 — fatigue modérée</option>
+            <option value="5" selected>5 — fatigue moyenne</option>
+            <option value="6">6 — fatigué</option>
+            <option value="7">7 — très fatigué</option>
+            <option value="8">8 — épuisé (récupération nécessaire)</option>
+            <option value="9">9 — très épuisé</option>
+            <option value="10">10 — KO (à signaler au coach)</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="comments">Commentaires (facultatif) :</label>
@@ -88,8 +146,9 @@
     </main>
     <footer>
       <p>
-        Les données sont stockées localement sur votre appareil. Utilisez la fonction
-        d’exportation pour les partager avec votre entraîneur.
+        Les données sont conservées localement sur votre appareil et synchronisées automatiquement si un
+        point de synchronisation est configuré. L’exportation est toujours disponible à titre
+        facultatif.
       </p>
     </footer>
     <script src="script.js"></script>
