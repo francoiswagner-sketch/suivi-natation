@@ -380,7 +380,6 @@ function computeLoad(duration, rpe) {
       b.classList.toggle("active", Number(b.dataset.range) === cur);
       b.setAttribute("aria-pressed", Number(b.dataset.range) === cur ? "true" : "false");
     });
-  });
   }
 
   // ====== Table ======
