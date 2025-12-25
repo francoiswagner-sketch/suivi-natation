@@ -79,6 +79,20 @@ form#session-form {
   font-size: 1rem;
 }
 
+/* Les curseurs (range) prennent toute la largeur et sont mieux espacés */
+.form-group input[type='range'] {
+  width: 100%;
+  padding: 0;
+  margin-top: 0.25rem;
+}
+
+/* Affichage de la valeur courante à côté du libellé */
+.form-group label span {
+  font-weight: normal;
+  margin-left: 0.3rem;
+  color: var(--primary-color);
+}
+
 .form-group textarea {
   resize: vertical;
 }
