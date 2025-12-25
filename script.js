@@ -83,9 +83,35 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  function parseISODateToDate(yyyyMmDd) {
-    const [y, m, d] = String(yyyyMmDd).split("-").map((x) => parseInt(x, 10));
-    return new Date(y, (m || 1) - 1, d || 1);
+  // Accepte "YYYY-MM-DD", "DD/MM/YYYY" et formats Date.parse() (ex: "Thu Dec 25 2025 ...")
+  function parseAnyDateToDate(value) {
+    const s = String(value || "").trim();
+    if (!s) return new Date(NaN);
+
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, m, d] = s.split("-").map((x) => parseInt(x, 10));
+      return new Date(y, (m || 1) - 1, d || 1);
+    }
+
+    // DD/MM/YYYY
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+      const [dd, mm, yyyy] = s.split("/").map((x) => parseInt(x, 10));
+      return new Date(yyyy, (mm || 1) - 1, dd || 1);
+    }
+
+    // Autres formats (Date.parse)
+    const dt = new Date(s);
+    return dt;
+  }
+
+  function toISODateString(value) {
+    const dt = parseAnyDateToDate(value);
+    if (!Number.isFinite(dt.getTime())) return "";
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
   }
 
   function computeLoad(duration, rpe) {
@@ -174,8 +200,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function sortSessionsDesc(list) {
     return list.sort((a, b) => {
-      const da = parseISODateToDate(a.sessionDate).getTime();
-      const db = parseISODateToDate(b.sessionDate).getTime();
+      const da = parseAnyDateToDate(a.sessionDate).getTime();
+      const db = parseAnyDateToDate(b.sessionDate).getTime();
       if (da !== db) return db - da;
       // soir après matin
       return (b.timeSlot === "soir" ? 1 : 0) - (a.timeSlot === "soir" ? 1 : 0);
@@ -191,7 +217,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const now = new Date();
     const from = new Date(now);
     from.setDate(from.getDate() - days);
-    return list.filter((s) => parseISODateToDate(s.sessionDate) >= from);
+    return list.filter((s) => {
+      const dt = parseAnyDateToDate(s.sessionDate);
+      return Number.isFinite(dt.getTime()) && dt >= from;
+    });
   }
 
   function updateRangeButtons() {
@@ -320,7 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // key: rpe/performance/engagement/fatigue
     const map = new Map(); // date -> {sum, count}
     list.forEach((s) => {
-      const d = s.sessionDate;
+      const d = toISODateString(s.sessionDate);
       const v = Number(s[key]);
       if (!d || !Number.isFinite(v)) return;
       const cur = map.get(d) || { sum: 0, count: 0 };
@@ -332,7 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const pts = Array.from(map.entries())
       .map(([date, agg]) => ({
         date,
-        x: parseISODateToDate(date),
+        x: parseAnyDateToDate(date),
         y: agg.sum / agg.count,
       }))
       .sort((a, b) => a.x - b.x);
@@ -524,7 +553,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const fetched = data.sessions
       .map((s) => ({
         athleteName: (s.athleteName || "").toString(),
-        sessionDate: (s.sessionDate || "").toString(),
+        // Normalise la date renvoyée par Sheets (peut être "25/12/2025" ou une date longue)
+        sessionDate: toISODateString(s.sessionDate),
         timeSlot: (s.timeSlot || "").toString(),
         duration: safeInt(s.duration),
         distance:
