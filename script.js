@@ -1,12 +1,19 @@
-/* swim_app - script.js (Google Sheets sync + récupération + indicateurs + km) */
+/* swim_app - script.js
+   - Saisie sans clavier (menus déroulants)
+   - Enregistrement local + synchronisation Google Sheets
+   - Récupération des dernières séances (GET JSON)
+   - KPIs + graphiques (canvas) avec toggle 7j / 30j / 365j
+*/
 
 document.addEventListener("DOMContentLoaded", () => {
   // ====== CONFIG ======
+  // Mets ici l’URL /exec de ton déploiement Apps Script (avec ?token=...)
   const SYNC_ENDPOINT =
     "https://script.google.com/macros/s/AKfycbwby5u05iYNVzuj7_oGLpFoKeuOrWKYaSrsGKRKS4puazSeTgyj0ZhqnTBUaSFYQb4ZGQ/exec?token=ersteinaquaticclub2026";
 
   const STORAGE_SESSIONS_KEY = "swimSessions";
   const STORAGE_NAME_KEY = "swimmerName";
+  const STORAGE_RANGE_KEY = "kpiRangeDays"; // 7 | 30 | 365
 
   // ====== DOM ======
   const form = document.getElementById("session-form");
@@ -23,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const durationSelect = document.getElementById("duration");
   const distanceSelect = document.getElementById("distance");
 
-  const rpeSelect = document.getElementById("rpe");
+  const rpeSelect = document.getElementById("rpe"); // Difficulté
   const performanceSelect = document.getElementById("performance");
   const engagementSelect = document.getElementById("engagement");
   const fatigueSelect = document.getElementById("fatigue");
@@ -42,8 +49,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const statusEl = document.getElementById("sync-status");
 
+  const rangeBtns = Array.from(document.querySelectorAll(".range-btn"));
+
+  const chartRpe = document.getElementById("chart-rpe");
+  const chartPerformance = document.getElementById("chart-performance");
+  const chartEngagement = document.getElementById("chart-engagement");
+  const chartFatigue = document.getElementById("chart-fatigue");
+
   // ====== STATE ======
   let sessions = [];
+  let rangeDays = Number(localStorage.getItem(STORAGE_RANGE_KEY) || "7");
+  if (![7, 30, 365].includes(rangeDays)) rangeDays = 7;
 
   // ====== Helpers ======
   function setStatus(message, type = "") {
@@ -75,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function computeLoad(duration, rpe) {
     const d = Number(duration);
     const r = Number(rpe);
-    if (!Number.isFinite(d) || !Number.isFinite(r)) return "";
+    if (!Number.isFinite(d) || !Number.isFinite(r)) return 0;
     return d * r;
   }
 
@@ -96,20 +112,25 @@ document.addEventListener("DOMContentLoaded", () => {
   function applyStoredNameUI() {
     const stored = localStorage.getItem(STORAGE_NAME_KEY);
     if (stored) {
-      storedNameEl.textContent = stored;
-      storedNameDisplay.classList.remove("hidden");
-      athleteNameWrapper.classList.add("hidden");
+      if (storedNameEl) storedNameEl.textContent = stored;
+      storedNameDisplay?.classList.remove("hidden");
+      athleteNameWrapper?.classList.add("hidden");
 
       // Évite les blocages Safari iOS (required + champ caché)
-      athleteNameInput.value = stored;
-      athleteNameInput.disabled = true;
-      athleteNameInput.removeAttribute("required");
+      if (athleteNameInput) {
+        athleteNameInput.value = stored;
+        athleteNameInput.disabled = true;
+        athleteNameInput.removeAttribute("required");
+      }
     } else {
-      storedNameDisplay.classList.add("hidden");
-      athleteNameWrapper.classList.remove("hidden");
-      athleteNameInput.disabled = false;
-      athleteNameInput.setAttribute("required", "required");
-      athleteNameInput.value = "";
+      storedNameDisplay?.classList.add("hidden");
+      athleteNameWrapper?.classList.remove("hidden");
+
+      if (athleteNameInput) {
+        athleteNameInput.disabled = false;
+        athleteNameInput.setAttribute("required", "required");
+        athleteNameInput.value = "";
+      }
     }
   }
 
@@ -156,15 +177,39 @@ document.addEventListener("DOMContentLoaded", () => {
       const da = parseISODateToDate(a.sessionDate).getTime();
       const db = parseISODateToDate(b.sessionDate).getTime();
       if (da !== db) return db - da;
+      // soir après matin
       return (b.timeSlot === "soir" ? 1 : 0) - (a.timeSlot === "soir" ? 1 : 0);
     });
   }
 
+  function getMine() {
+    const storedName = localStorage.getItem(STORAGE_NAME_KEY) || "";
+    return storedName ? sessions.filter((s) => s.athleteName === storedName) : sessions.slice();
+  }
+
+  function filterByDays(list, days) {
+    const now = new Date();
+    const from = new Date(now);
+    from.setDate(from.getDate() - days);
+    return list.filter((s) => parseISODateToDate(s.sessionDate) >= from);
+  }
+
+  function updateRangeButtons() {
+    if (!rangeBtns.length) return;
+    rangeBtns.forEach((b) => {
+      b.classList.toggle("active", Number(b.dataset.range) === rangeDays);
+      b.setAttribute("aria-pressed", Number(b.dataset.range) === rangeDays ? "true" : "false");
+    });
+  }
+
+  // ====== Table ======
   function updateTable() {
     if (!sessionsTable || !sessionsBody || !noSessions) return;
     sessionsBody.innerHTML = "";
 
-    if (!sessions.length) {
+    const mine = getMine();
+
+    if (!mine.length) {
       sessionsTable.classList.add("hidden");
       noSessions.classList.remove("hidden");
       return;
@@ -179,7 +224,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "Créneau",
       "Durée (min)",
       "Km",
-      "RPE",
+      "Difficulté",
       "Performance",
       "Engagement",
       "Fatigue",
@@ -187,7 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "Commentaires",
     ];
 
-    sessions.forEach((s) => {
+    mine.forEach((s) => {
       const tr = document.createElement("tr");
 
       function td(val, label) {
@@ -213,73 +258,221 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ====== KPIs ======
+  function avg(list, key) {
+    if (!list.length) return null;
+    const vals = list.map((s) => Number(s[key])).filter((v) => Number.isFinite(v));
+    if (!vals.length) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+
+  function sum(list, key) {
+    return list
+      .map((s) => Number(s[key]))
+      .filter((v) => Number.isFinite(v))
+      .reduce((a, b) => a + b, 0);
+  }
+
   function renderKpis() {
     if (!kpisEl) return;
-    const storedName = localStorage.getItem(STORAGE_NAME_KEY) || "";
-    const mine = storedName ? sessions.filter((s) => s.athleteName === storedName) : sessions;
 
+    const mine = getMine();
     if (!mine.length) {
       kpisEl.innerHTML = "";
       return;
     }
 
-    const now = new Date();
-    const d7 = new Date(now);
-    d7.setDate(d7.getDate() - 7);
-    const d30 = new Date(now);
-    d30.setDate(d30.getDate() - 30);
+    const inRange = filterByDays(mine, rangeDays);
+    const last7 = filterByDays(mine, 7);
 
-    const last7 = mine.filter((s) => parseISODateToDate(s.sessionDate) >= d7);
-    const last30 = mine.filter((s) => parseISODateToDate(s.sessionDate) >= d30);
+    const sessionsRange = inRange.length;
+    const avgRpe = avg(inRange, "rpe");
+    const avgPerf = avg(inRange, "performance");
+    const avgEng = avg(inRange, "engagement");
+    const avgFat = avg(inRange, "fatigue");
 
-    function avg(list, key) {
-      if (!list.length) return null;
-      const vals = list.map((s) => Number(s[key])).filter((v) => Number.isFinite(v));
-      if (!vals.length) return null;
-      return vals.reduce((a, b) => a + b, 0) / vals.length;
-    }
+    const totalMin = sum(inRange, "duration");
+    const totalLoad = inRange.reduce((acc, s) => acc + computeLoad(s.duration, s.rpe), 0);
 
-    function sum(list, key) {
-      return list
-        .map((s) => Number(s[key]))
-        .filter((v) => Number.isFinite(v))
-        .reduce((a, b) => a + b, 0);
-    }
-
-    const totalSessions = mine.length;
-    const sessions7 = last7.length;
-    const sessions30 = last30.length;
-
-    const avgPerf7 = avg(last7, "performance");
-    const avgEng7 = avg(last7, "engagement");
-    const avgFat7 = avg(last7, "fatigue");
-    const avgRpe7 = avg(last7, "rpe");
-
-    const totalMin7 = sum(last7, "duration");
-    const totalLoad7 = last7.reduce((acc, s) => acc + (computeLoad(s.duration, s.rpe) || 0), 0);
-    const totalDist7 = sum(last7, "distance");
+    const km7 = sum(last7, "distance"); // en mètres
+    const km7Label = km7 ? `${Math.round(km7 / 100) / 10} km` : "—";
 
     const cards = [
-      { label: "Séances (7j)", value: sessions7 },
-      { label: "Séances (30j)", value: sessions30 },
-      { label: "Performance moy. (7j)", value: avgPerf7 != null ? avgPerf7.toFixed(1) : "—" },
-      { label: "Engagement moy. (7j)", value: avgEng7 != null ? avgEng7.toFixed(1) : "—" },
-      { label: "Fatigue moy. (7j)", value: avgFat7 != null ? avgFat7.toFixed(1) : "—" },
-      { label: "RPE moy. (7j)", value: avgRpe7 != null ? avgRpe7.toFixed(1) : "—" },
-      { label: "Durée totale (7j)", value: `${totalMin7} min` },
-      { label: "Charge totale (7j)", value: Math.round(totalLoad7) },
-      { label: "Distance totale (7j)", value: totalDist7 ? `${totalDist7} m` : "—" },
-      { label: "Total séances", value: totalSessions },
+      { label: `Séances (${rangeDays}j)`, value: sessionsRange },
+      { label: `Difficulté moy. (${rangeDays}j)`, value: avgRpe != null ? avgRpe.toFixed(1) : "—" },
+      { label: `Performance moy. (${rangeDays}j)`, value: avgPerf != null ? avgPerf.toFixed(1) : "—" },
+      { label: `Engagement moy. (${rangeDays}j)`, value: avgEng != null ? avgEng.toFixed(1) : "—" },
+      { label: `Fatigue moy. (${rangeDays}j)`, value: avgFat != null ? avgFat.toFixed(1) : "—" },
+      { label: `Durée totale (${rangeDays}j)`, value: `${totalMin} min` },
+      { label: `Charge totale (${rangeDays}j)`, value: Math.round(totalLoad) },
+      { label: `Kilométrage total (7j)`, value: km7Label },
     ];
 
     kpisEl.innerHTML = cards
       .map(
         (c) =>
-          `<div class="kpi-card"><div class="kpi-value">${c.value}</div><div class="kpi-label">${c.label}</div></div>`
+          `<div class="kpi"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`
       )
       .join("");
   }
 
+  // ====== Charts (canvas) ======
+  function groupDailyAverage(list, key) {
+    // key: rpe/performance/engagement/fatigue
+    const map = new Map(); // date -> {sum, count}
+    list.forEach((s) => {
+      const d = s.sessionDate;
+      const v = Number(s[key]);
+      if (!d || !Number.isFinite(v)) return;
+      const cur = map.get(d) || { sum: 0, count: 0 };
+      cur.sum += v;
+      cur.count += 1;
+      map.set(d, cur);
+    });
+
+    const pts = Array.from(map.entries())
+      .map(([date, agg]) => ({
+        date,
+        x: parseISODateToDate(date),
+        y: agg.sum / agg.count,
+      }))
+      .sort((a, b) => a.x - b.x);
+
+    return pts;
+  }
+
+  function resizeCanvasForHiDpi(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.floor(rect.width * dpr));
+    const height = Math.max(1, Math.floor((canvas.height || rect.height || 160) * dpr));
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+    return { dpr, width, height };
+  }
+
+  function clearCanvas(ctx, w, h) {
+    ctx.clearRect(0, 0, w, h);
+  }
+
+  function drawLineChart(canvas, points, opts) {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const { width: w, height: h } = resizeCanvasForHiDpi(canvas);
+    clearCanvas(ctx, w, h);
+
+    // empty state
+    if (!points || points.length < 2) {
+      ctx.font = `${Math.round(12 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.fillStyle = "#6b7280";
+      ctx.textAlign = "center";
+      ctx.fillText("Pas assez de données", w / 2, h / 2);
+      return;
+    }
+
+    const padL = Math.round(38 * (window.devicePixelRatio || 1));
+    const padR = Math.round(14 * (window.devicePixelRatio || 1));
+    const padT = Math.round(16 * (window.devicePixelRatio || 1));
+    const padB = Math.round(26 * (window.devicePixelRatio || 1));
+
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    const yMin = 1;
+    const yMax = 10;
+
+    const xMin = points[0].x.getTime();
+    const xMax = points[points.length - 1].x.getTime() || xMin + 1;
+
+    const xToPx = (t) => padL + ((t - xMin) / (xMax - xMin)) * plotW;
+    const yToPx = (y) => padT + (1 - (y - yMin) / (yMax - yMin)) * plotH;
+
+    // grid lines (y)
+    ctx.strokeStyle = "rgba(17,24,39,0.08)";
+    ctx.lineWidth = Math.max(1, Math.round(1 * (window.devicePixelRatio || 1)));
+    for (let y = 2; y <= 10; y += 2) {
+      const py = yToPx(y);
+      ctx.beginPath();
+      ctx.moveTo(padL, py);
+      ctx.lineTo(padL + plotW, py);
+      ctx.stroke();
+    }
+
+    // axes labels (y: 1 and 10)
+    ctx.fillStyle = "#6b7280";
+    ctx.font = `${Math.round(11 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    ctx.textAlign = "right";
+    ctx.fillText("10", padL - 6, yToPx(10) + 4);
+    ctx.fillText("1", padL - 6, yToPx(1) + 4);
+
+    // title
+    if (opts?.title) {
+      ctx.fillStyle = "#111827";
+      ctx.textAlign = "left";
+      ctx.font = `${Math.round(12 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.fillText(opts.title, padL, padT - 4);
+    }
+
+    // line
+    ctx.strokeStyle = "rgba(47,111,235,0.9)";
+    ctx.lineWidth = Math.max(2, Math.round(2 * (window.devicePixelRatio || 1)));
+    ctx.beginPath();
+    points.forEach((p, i) => {
+      const px = xToPx(p.x.getTime());
+      const py = yToPx(p.y);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+
+    // dots
+    ctx.fillStyle = "rgba(47,111,235,1)";
+    const r = Math.max(2, Math.round(2.5 * (window.devicePixelRatio || 1)));
+    points.forEach((p) => {
+      const px = xToPx(p.x.getTime());
+      const py = yToPx(p.y);
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // x labels: show first, last, and a few in-between
+    ctx.fillStyle = "#6b7280";
+    ctx.font = `${Math.round(11 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    ctx.textAlign = "center";
+
+    const labelCount = Math.min(4, points.length);
+    const idxs = new Set([0, points.length - 1]);
+    if (labelCount > 2) {
+      idxs.add(Math.floor(points.length / 3));
+      idxs.add(Math.floor((2 * points.length) / 3));
+    }
+    Array.from(idxs)
+      .sort((a, b) => a - b)
+      .forEach((i) => {
+        const p = points[i];
+        const px = xToPx(p.x.getTime());
+        const label = p.date.slice(5); // MM-DD
+        ctx.fillText(label, px, padT + plotH + Math.round(18 * (window.devicePixelRatio || 1)));
+      });
+  }
+
+  function renderCharts() {
+    const mine = getMine();
+    const inRange = filterByDays(mine, rangeDays);
+
+    const rpePts = groupDailyAverage(inRange, "rpe");
+    const perfPts = groupDailyAverage(inRange, "performance");
+    const engPts = groupDailyAverage(inRange, "engagement");
+    const fatPts = groupDailyAverage(inRange, "fatigue");
+
+    drawLineChart(chartRpe, rpePts, { title: `Difficulté (${rangeDays}j)` });
+    drawLineChart(chartPerformance, perfPts, { title: `Performance (${rangeDays}j)` });
+    drawLineChart(chartEngagement, engPts, { title: `Engagement (${rangeDays}j)` });
+    drawLineChart(chartFatigue, fatPts, { title: `Fatigue (${rangeDays}j)` });
+  }
+
+  // ====== Sync / Fetch ======
   async function syncSession(session) {
     const res = await fetch(SYNC_ENDPOINT, {
       method: "POST",
@@ -292,7 +485,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (txt !== "OK") throw new Error(txt || "Réponse inattendue");
   }
 
-  // ===== IMPORTANT : version corrigée de la récupération =====
   async function fetchLatestSessions() {
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
     if (!storedName) {
@@ -304,12 +496,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Construction robuste (évite les soucis URL()/searchParams + redirects)
+    // Construction robuste (évite soucis URL()/searchParams + redirects)
     const sep = SYNC_ENDPOINT.includes("?") ? "&" : "?";
     const url =
       `${SYNC_ENDPOINT}${sep}action=get` +
       `&athleteName=${encodeURIComponent(storedName)}` +
-      `&limit=50`;
+      `&limit=120`;
 
     setStatus("Récupération des séances…", "info");
 
@@ -329,12 +521,11 @@ document.addEventListener("DOMContentLoaded", () => {
       throw new Error(data?.error || "Format inattendu (sessions manquant)");
     }
 
-    // Normalisation + dédoublonnage
     const fetched = data.sessions
       .map((s) => ({
-        athleteName: s.athleteName,
-        sessionDate: s.sessionDate,
-        timeSlot: s.timeSlot,
+        athleteName: (s.athleteName || "").toString(),
+        sessionDate: (s.sessionDate || "").toString(),
+        timeSlot: (s.timeSlot || "").toString(),
         duration: safeInt(s.duration),
         distance:
           s.distance === "" || s.distance === null || s.distance === undefined
@@ -344,38 +535,43 @@ document.addEventListener("DOMContentLoaded", () => {
         performance: safeInt(s.performance),
         engagement: safeInt(s.engagement),
         fatigue: safeInt(s.fatigue),
-        comments: s.comments || "",
+        comments: (s.comments || "").toString(),
       }))
       .filter((s) => s.athleteName && s.sessionDate && !Number.isNaN(s.duration) && !Number.isNaN(s.rpe));
 
+    // Merge + dedupe
     const byKey = new Map();
     [...sessions, ...fetched].forEach((s) => byKey.set(sessionKey(s), s));
     sessions = sortSessionsDesc([...byKey.values()]);
     saveSessions();
+
+    updateRangeButtons();
     updateTable();
     renderKpis();
-    setStatus(`✅ ${fetched.length} séance(s) récupérée(s) depuis Google Sheets.`, "success");
+    renderCharts();
+
+    setStatus(`✅ ${fetched.length} séance(s) récupérée(s).`, "success");
   }
 
-  // ====== EVENTS ======
+  // ====== Events ======
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     setStatus("", "");
 
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
-    const athleteName = (storedName || athleteNameInput.value || "").trim();
+    const athleteName = (storedName || athleteNameInput?.value || "").trim();
 
-    const sessionDate = sessionDateInput.value;
-    const timeSlot = timeSlotSelect.value;
+    const sessionDate = sessionDateInput?.value || "";
+    const timeSlot = timeSlotSelect?.value || "";
 
-    const duration = safeInt(durationSelect.value);
-    const distance = distanceSelect.value ? safeInt(distanceSelect.value) : "";
+    const duration = safeInt(durationSelect?.value);
+    const distance = distanceSelect?.value ? safeInt(distanceSelect.value) : "";
 
-    const rpe = safeInt(rpeSelect.value);
-    const performance = safeInt(performanceSelect.value);
-    const engagement = safeInt(engagementSelect.value);
-    const fatigue = safeInt(fatigueSelect.value);
-    const comments = (commentsInput.value || "").trim();
+    const rpe = safeInt(rpeSelect?.value);
+    const performance = safeInt(performanceSelect?.value);
+    const engagement = safeInt(engagementSelect?.value);
+    const fatigue = safeInt(fatigueSelect?.value);
+    const comments = (commentsInput?.value || "").trim();
 
     if (!athleteName) return setStatus("Merci d’indiquer votre nom.", "error");
     if (!sessionDate) return setStatus("Merci de sélectionner une date.", "error");
@@ -405,8 +601,11 @@ document.addEventListener("DOMContentLoaded", () => {
     sessions.unshift(session);
     sessions = sortSessionsDesc(sessions);
     saveSessions();
+
+    updateRangeButtons();
     updateTable();
     renderKpis();
+    renderCharts();
 
     setStatus("Envoi au coach…", "info");
     try {
@@ -423,7 +622,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Reset partiel
-    commentsInput.value = "";
+    if (commentsInput) commentsInput.value = "";
     if (distanceSelect) distanceSelect.value = "";
     ensureDefaults();
   });
@@ -432,7 +631,9 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.removeItem(STORAGE_NAME_KEY);
     applyStoredNameUI();
     setStatus("Nom réinitialisé.", "info");
+    updateTable();
     renderKpis();
+    renderCharts();
   });
 
   fetchLatestBtn?.addEventListener("click", async () => {
@@ -444,22 +645,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  rangeBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const days = Number(btn.dataset.range);
+      if (![7, 30, 365].includes(days)) return;
+      rangeDays = days;
+      localStorage.setItem(STORAGE_RANGE_KEY, String(rangeDays));
+      updateRangeButtons();
+      renderKpis();
+      renderCharts();
+    });
+  });
+
   exportCsvBtn?.addEventListener("click", () => {
-    if (!sessions.length) return alert("Aucune séance à exporter.");
+    const mine = getMine();
+    if (!mine.length) return alert("Aucune séance à exporter.");
+
     const headers = [
       "Nom",
       "Date",
       "Créneau",
       "Durée (min)",
       "Distance (m)",
-      "RPE",
+      "Difficulté",
       "Performance",
       "Engagement",
       "Fatigue",
       "Charge",
       "Commentaires",
     ];
-    const rows = sessions.map((s) => [
+
+    const rows = mine.map((s) => [
       s.athleteName,
       s.sessionDate,
       s.timeSlot,
@@ -486,8 +702,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   exportJsonBtn?.addEventListener("click", () => {
-    if (!sessions.length) return alert("Aucune séance à exporter.");
-    const blob = new Blob([JSON.stringify(sessions, null, 2)], {
+    const mine = getMine();
+    if (!mine.length) return alert("Aucune séance à exporter.");
+
+    const blob = new Blob([JSON.stringify(mine, null, 2)], {
       type: "application/json;charset=utf-8;",
     });
     const url = URL.createObjectURL(blob);
@@ -506,7 +724,13 @@ document.addEventListener("DOMContentLoaded", () => {
     saveSessions();
     updateTable();
     renderKpis();
+    renderCharts();
     setStatus("Données locales supprimées.", "info");
+  });
+
+  // Re-render charts on resize (responsive canvases)
+  window.addEventListener("resize", () => {
+    renderCharts();
   });
 
   // ====== INIT ======
@@ -516,6 +740,9 @@ document.addEventListener("DOMContentLoaded", () => {
   applyStoredNameUI();
   ensureDefaults();
   sessions = sortSessionsDesc(sessions);
+
+  updateRangeButtons();
   updateTable();
   renderKpis();
+  renderCharts();
 });
