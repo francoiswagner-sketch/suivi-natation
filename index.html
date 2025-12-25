@@ -11,9 +11,9 @@
       <h1>Suivi d’entraînement – Natation</h1>
       <p class="subtitle">Consignez vos séances et vos sensations en quelques clics.</p>
     </header>
+
     <main>
       <form id="session-form">
-        <!-- Nom du nageur : stocké et réutilisé pour éviter de le saisir à chaque fois. -->
         <div id="athleteNameWrapper" class="form-group">
           <label for="athleteName">Votre nom :</label>
           <input
@@ -24,16 +24,18 @@
             required
           />
         </div>
-        <!-- Affichage du nom enregistré avec possibilité de le changer -->
+
         <div id="storedNameDisplay" class="form-group hidden">
           <label>Nom :</label>
           <span id="storedName"></span>
           <button type="button" id="changeName" class="secondary">Changer de nom</button>
         </div>
+
         <div class="form-group">
           <label for="sessionDate">Date de la séance :</label>
           <input type="date" id="sessionDate" name="sessionDate" required />
         </div>
+
         <div class="form-group">
           <label for="timeSlot">Créneau :</label>
           <select id="timeSlot" name="timeSlot" required>
@@ -41,19 +43,27 @@
             <option value="soir">Soir</option>
           </select>
         </div>
-  <div class="form-group">
-    <label for="duration">Durée de la séance</label>
-    <select id="duration" name="duration" required>
-      <option value="60">1h</option>
-      <option value="75">1h15</option>
-      <option value="90">1h30</option>
-      <option value="105">1h45</option>
-      <option value="120" selected>2h — standard</option>
-      <option value="135">2h15</option>
-      <option value="150">2h30</option>
-    </select>
-  </div>
 
+        <div class="form-group">
+          <label for="duration">Durée de la séance</label>
+          <select id="duration" name="duration" required>
+            <option value="60">1h</option>
+            <option value="75">1h15</option>
+            <option value="90">1h30</option>
+            <option value="105">1h45</option>
+            <option value="120" selected>2h — standard</option>
+            <option value="135">2h15</option>
+            <option value="150">2h30</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="distance">Kilométrage (facultatif)</label>
+          <select id="distance" name="distance">
+            <option value="">—</option>
+          </select>
+          <div class="helper">De 2000m à 7000m, par pas de 100m.</div>
+        </div>
 
         <div class="form-group">
           <label for="rpe">Exertion (RPE 1–10)</label>
@@ -118,16 +128,28 @@
             <option value="10">10 — KO (à signaler)</option>
           </select>
         </div>
+
         <div class="form-group">
           <label for="comments">Commentaires (facultatif) :</label>
           <textarea id="comments" name="comments" rows="3" placeholder="Notes complémentaires…"></textarea>
         </div>
+
         <button id="submit-btn" type="submit">Enregistrer la séance</button>
         <div id="sync-status" class="sync-status" aria-live="polite"></div>
       </form>
+
       <section id="sessions-section">
-        <h2>Mes séances enregistrées</h2>
+        <div class="section-head">
+          <h2>Mes séances enregistrées</h2>
+          <button id="fetch-latest" class="secondary" type="button">
+            Récupérer mes dernières séances
+          </button>
+        </div>
+
+        <div id="kpis" class="kpis" aria-live="polite"></div>
+
         <div id="no-sessions" class="info">Aucune séance enregistrée pour le moment.</div>
+
         <table id="sessions-table" class="hidden">
           <thead>
             <tr>
@@ -135,6 +157,7 @@
               <th>Date</th>
               <th>Créneau</th>
               <th>Durée (min)</th>
+              <th>Km</th>
               <th>RPE</th>
               <th>Performance</th>
               <th>Engagement</th>
@@ -145,6 +168,7 @@
           </thead>
           <tbody></tbody>
         </table>
+
         <div class="actions">
           <button id="export-csv" class="secondary">Exporter en CSV</button>
           <button id="export-json" class="secondary">Exporter en JSON</button>
@@ -152,13 +176,14 @@
         </div>
       </section>
     </main>
+
     <footer>
       <p>
-        Les données sont conservées localement sur votre appareil et synchronisées automatiquement si un
-        point de synchronisation est configuré. L’exportation est toujours disponible à titre
-        facultatif.
+        Les données sont conservées localement sur votre appareil et synchronisées automatiquement si un point de synchronisation est configuré.
+        L’exportation est toujours disponible à titre facultatif.
       </p>
     </footer>
+
     <script src="script.js"></script>
   </body>
 </html>
