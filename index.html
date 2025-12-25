@@ -178,7 +178,12 @@
 
 
 
-        <div id="no-sessions" class="info">Aucune séance enregistrée pour le moment.</div>
+        <div class="history-toggle">
+          <button id="toggle-history" class="secondary" type="button">Afficher l’historique</button>
+        </div>
+
+        <div id="history-panel" class="hidden">
+<div id="no-sessions" class="info">Aucune séance enregistrée pour le moment.</div>
 
         <table id="sessions-table" class="hidden">
           <thead>
@@ -204,7 +209,9 @@
           <button id="export-json" class="secondary">Exporter en JSON</button>
           <button id="clear-data" class="danger">Supprimer toutes les données</button>
         </div>
-      </section>
+      
+        </div>
+</section>
     </main>
 
     <footer>
@@ -214,6 +221,6 @@
       </p>
     </footer>
 
-    <script src="script.js?v=42"></script>
+    <script src="script.js?v=4"></script>
   </body>
 </html>
