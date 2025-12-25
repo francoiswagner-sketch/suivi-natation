@@ -7,8 +7,9 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-  <header class="club-header">
-    <div class="club-header-content">
+    <header class="club-header">
+  <div class="club-header-bar">
+    <div class="club-header-left">
       <img src="logo-eac.png" alt="Erstein Aquatic Club" class="club-logo" />
       <div class="club-text">
         <h1>Erstein Aquatic Club</h1>
@@ -16,8 +17,11 @@
         <p>Suivi quotidien des charges et ressentis</p>
       </div>
     </div>
-  </header>
-
+    <div class="club-header-right">
+      <button id="coach-access" type="button" class="coach-btn">Accès coach</button>
+    </div>
+  </div>
+</header>
 
     <main>
       <form id="session-form">
@@ -145,6 +149,53 @@
         <div id="sync-status" class="sync-status" aria-live="polite"></div>
       </form>
 
+
+      <!-- ===== Vue Coach (protégée par mot de passe) ===== -->
+      <section id="coach-section" class="hidden">
+        <div class="section-head">
+          <h2>Vue Coach</h2>
+          <button id="coach-exit" class="secondary" type="button">Retour nageur</button>
+        </div>
+
+        <div class="coach-controls">
+          <label for="coach-athlete">Nageur :</label>
+          <select id="coach-athlete">
+            <option value="" selected>— Sélectionner un nageur —</option>
+          </select>
+          <button id="coach-refresh" class="secondary" type="button">Rafraîchir</button>
+        </div>
+
+        <div class="kpi-toolbar">
+          <div class="kpi-range" role="tablist" aria-label="Période KPIs coach">
+            <button type="button" class="range-btn" data-scope="coach" data-range="7">7 jours</button>
+            <button type="button" class="range-btn" data-scope="coach" data-range="30">30 jours</button>
+            <button type="button" class="range-btn" data-scope="coach" data-range="365">365 jours</button>
+          </div>
+        </div>
+
+        <div id="coach-kpis" class="kpis" aria-live="polite"></div>
+
+        <div class="charts-grid" aria-label="Graphiques coach">
+          <div class="chart-card">
+            <div class="chart-title">Difficulté</div>
+            <canvas id="coach-chart-rpe" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Performance perçue</div>
+            <canvas id="coach-chart-performance" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Engagement</div>
+            <canvas id="coach-chart-engagement" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Fatigue</div>
+            <canvas id="coach-chart-fatigue" height="160"></canvas>
+          </div>
+        </div>
+      </section>
+
+
       <section id="sessions-section">
         <div class="section-head">
           <h2>Mes séances enregistrées</h2>
@@ -228,6 +279,6 @@
       </p>
     </footer>
 
-    <script src="script.js?v=5"></script>
+    <script src="script.js?v=4"></script>
   </body>
 </html>
