@@ -1,4 +1,4 @@
-/* swim_app - script.js (Google Sheets sync + dropdown UI + matin/soir) */
+/* swim_app - script.js (compatible avec ton index.html) */
 
 document.addEventListener("DOMContentLoaded", () => {
   // ====== CONFIG ======
@@ -11,9 +11,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // ====== DOM ======
   const form = document.getElementById("session-form");
 
+  const athleteNameWrapper = document.getElementById("athleteNameWrapper");
   const athleteNameInput = document.getElementById("athleteName");
+
+  const storedNameDisplay = document.getElementById("storedNameDisplay");
+  const storedNameEl = document.getElementById("storedName");
+  const changeNameBtn = document.getElementById("changeName");
+
   const sessionDateInput = document.getElementById("sessionDate");
-  const timeSlotSelect = document.getElementById("timeSlot"); // "matin" / "soir"
+  const timeSlotSelect = document.getElementById("timeSlot"); // matin/soir
 
   const durationSelect = document.getElementById("duration");
   const rpeSelect = document.getElementById("rpe");
@@ -30,26 +36,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const exportJsonBtn = document.getElementById("export-json");
   const clearDataBtn = document.getElementById("clear-data");
 
-  const statusEl = document.getElementById("status");
+  // IMPORTANT : ton HTML utilise sync-status
+  const statusEl = document.getElementById("sync-status");
 
   // ====== STATE ======
   let sessions = [];
 
   // ====== Helpers ======
-  function setStatus(message, type = "info") {
+  function setStatus(message, type = "") {
     if (!statusEl) return;
     statusEl.textContent = message || "";
-    statusEl.dataset.type = type; // si tu veux styler via CSS
-    statusEl.classList.toggle("hidden", !message);
+    statusEl.classList.remove("success", "error", "info");
+    if (type) statusEl.classList.add(type);
   }
 
-  function safeParseInt(val) {
-    const n = parseInt(String(val), 10);
+  function safeInt(v) {
+    const n = parseInt(String(v), 10);
     return Number.isFinite(n) ? n : NaN;
   }
 
   function todayISODate() {
-    // YYYY-MM-DD
     const d = new Date();
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -57,11 +63,18 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  function computeLoad(duration, rpe) {
+    const d = Number(duration);
+    const r = Number(rpe);
+    if (!Number.isFinite(d) || !Number.isFinite(r)) return "";
+    return d * r;
+  }
+
   function loadSessions() {
     const raw = localStorage.getItem(STORAGE_SESSIONS_KEY);
     try {
-      sessions = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(sessions)) sessions = [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      sessions = Array.isArray(parsed) ? parsed : [];
     } catch {
       sessions = [];
     }
@@ -71,44 +84,35 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(sessions));
   }
 
-  function computeTrainingLoad(duration, rpe) {
-    const d = Number(duration);
-    const r = Number(rpe);
-    if (!Number.isFinite(d) || !Number.isFinite(r)) return "";
-    return d * r;
-  }
+  function applyStoredNameUI() {
+    const stored = localStorage.getItem(STORAGE_NAME_KEY);
 
-  function formatDateForDisplay(yyyyMmDd) {
-    // affiche en format local “JJ/MM/AAAA” selon le navigateur
-    try {
-      const [y, m, d] = String(yyyyMmDd).split("-").map((x) => parseInt(x, 10));
-      const dt = new Date(y, (m || 1) - 1, d || 1);
-      return dt.toLocaleDateString();
-    } catch {
-      return yyyyMmDd;
+    if (stored) {
+      // On affiche la zone "Nom : X" + bouton changer
+      storedNameEl.textContent = stored;
+      storedNameDisplay.classList.remove("hidden");
+      athleteNameWrapper.classList.add("hidden");
+
+      // Très important : éviter bug Safari iOS (required + champ caché)
+      athleteNameInput.value = stored;
+      athleteNameInput.disabled = true;
+      athleteNameInput.removeAttribute("required");
+    } else {
+      storedNameDisplay.classList.add("hidden");
+      athleteNameWrapper.classList.remove("hidden");
+
+      athleteNameInput.disabled = false;
+      athleteNameInput.setAttribute("required", "required");
+      athleteNameInput.value = "";
     }
   }
 
-  function ensureDefaultDateAndSlot() {
+  function ensureDefaults() {
     if (sessionDateInput && !sessionDateInput.value) {
       sessionDateInput.value = todayISODate();
     }
     if (timeSlotSelect && !timeSlotSelect.value) {
-      // valeur par défaut : matin (à adapter si tu veux)
       timeSlotSelect.value = "matin";
-    }
-  }
-
-  function applyStoredNameBehavior() {
-    const stored = localStorage.getItem(STORAGE_NAME_KEY);
-    if (stored && athleteNameInput) {
-      // Important : éviter le bug iOS “required + hidden”
-      athleteNameInput.value = stored;
-      athleteNameInput.disabled = true;
-      athleteNameInput.removeAttribute("required");
-    } else if (athleteNameInput) {
-      athleteNameInput.disabled = false;
-      athleteNameInput.setAttribute("required", "required");
     }
   }
 
@@ -126,6 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionsTable.classList.remove("hidden");
     noSessions.classList.add("hidden");
 
+    // Labels utilisés pour l’affichage mobile (data-label)
     const labels = [
       "Nom",
       "Date",
@@ -150,14 +155,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       tr.appendChild(td(s.athleteName, labels[0]));
-      tr.appendChild(td(formatDateForDisplay(s.sessionDate), labels[1]));
-      tr.appendChild(td(s.timeSlot, labels[2]));
+      tr.appendChild(td(s.sessionDate, labels[1]));
+      tr.appendChild(td(s.timeSlot, labels[2])); // <- ajout créneau
       tr.appendChild(td(s.duration, labels[3]));
       tr.appendChild(td(s.rpe, labels[4]));
       tr.appendChild(td(s.performance, labels[5]));
       tr.appendChild(td(s.engagement, labels[6]));
       tr.appendChild(td(s.fatigue, labels[7]));
-      tr.appendChild(td(computeTrainingLoad(s.duration, s.rpe), labels[8]));
+      tr.appendChild(td(computeLoad(s.duration, s.rpe), labels[8]));
       tr.appendChild(td(s.comments || "", labels[9]));
 
       sessionsBody.appendChild(tr);
@@ -165,8 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function syncSession(session) {
-    if (!SYNC_ENDPOINT) return { ok: false, error: "SYNC_ENDPOINT vide" };
-
+    // POST en text/plain pour éviter le preflight CORS Apps Script
     const res = await fetch(SYNC_ENDPOINT, {
       method: "POST",
       redirect: "follow",
@@ -180,62 +184,46 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const txt = (await res.text()).trim();
-    if (!res.ok) {
-      return { ok: false, error: `HTTP ${res.status}: ${txt}` };
-    }
-    if (txt !== "OK") {
-      return { ok: false, error: txt || "Réponse inattendue" };
-    }
-    return { ok: true };
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt}`);
+    if (txt !== "OK") throw new Error(txt || "Réponse inattendue");
   }
 
-  // ====== Actions ======
-  form?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    setStatus("", "info"); // clear
+  // ====== EVENTS ======
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    setStatus("", "");
 
-    // Nom (depuis storage si input désactivé)
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
-    const athleteName = storedName || (athleteNameInput?.value || "").trim();
+    const athleteName = (storedName || athleteNameInput.value || "").trim();
 
-    const sessionDate = sessionDateInput?.value || "";
-    const timeSlot = timeSlotSelect?.value || "";
+    const sessionDate = sessionDateInput.value;
+    const timeSlot = timeSlotSelect.value;
 
-    const duration = safeParseInt(durationSelect?.value);
-    const rpe = safeParseInt(rpeSelect?.value);
-    const performance = safeParseInt(performanceSelect?.value);
-    const engagement = safeParseInt(engagementSelect?.value);
-    const fatigue = safeParseInt(fatigueSelect?.value);
-    const comments = (commentsInput?.value || "").trim();
+    const duration = safeInt(durationSelect.value);
+    const rpe = safeInt(rpeSelect.value);
+    const performance = safeInt(performanceSelect.value);
+    const engagement = safeInt(engagementSelect.value);
+    const fatigue = safeInt(fatigueSelect.value);
+    const comments = (commentsInput.value || "").trim();
 
-    // Validation minimale
-    if (!athleteName) {
-      setStatus("Merci d’indiquer votre nom.", "error");
-      return;
-    }
-    if (!sessionDate) {
-      setStatus("Merci de sélectionner une date.", "error");
-      return;
-    }
-    if (!timeSlot) {
-      setStatus("Merci de choisir Matin ou Soir.", "error");
-      return;
-    }
+    // Validation
+    if (!athleteName) return setStatus("Merci d’indiquer votre nom.", "error");
+    if (!sessionDate) return setStatus("Merci de sélectionner une date.", "error");
+    if (!timeSlot) return setStatus("Merci de choisir Matin ou Soir.", "error");
     if ([duration, rpe, performance, engagement, fatigue].some((x) => Number.isNaN(x))) {
-      setStatus("Merci de sélectionner toutes les valeurs (durée, RPE, etc.).", "error");
-      return;
+      return setStatus("Merci de sélectionner toutes les valeurs.", "error");
     }
 
-    // Mémoriser le nom une fois
+    // Mémoriser le nom si première fois
     if (!storedName) {
       localStorage.setItem(STORAGE_NAME_KEY, athleteName);
-      applyStoredNameBehavior();
+      applyStoredNameUI();
     }
 
     const session = {
       athleteName,
-      sessionDate,  // YYYY-MM-DD
-      timeSlot,     // "matin" / "soir"
+      sessionDate,
+      timeSlot,
       duration,
       rpe,
       performance,
@@ -252,34 +240,32 @@ document.addEventListener("DOMContentLoaded", () => {
     // Sync distante
     setStatus("Envoi au coach…", "info");
     try {
-      const result = await syncSession(session);
-      if (result.ok) {
-        setStatus("✅ Séance enregistrée et envoyée au coach.", "success");
-      } else {
-        setStatus(
-          "⚠️ Séance enregistrée sur le téléphone, mais envoi au coach impossible : " +
-            (result.error || "réseau / token / droits"),
-          "error"
-        );
-      }
+      await syncSession(session);
+      setStatus("✅ Séance enregistrée et envoyée au coach.", "success");
     } catch (err) {
+      console.error(err);
       setStatus(
-        "⚠️ Séance enregistrée sur le téléphone, mais envoi au coach impossible (réseau / token / droits).",
+        "⚠️ Séance enregistrée sur le téléphone, mais envoi au coach impossible (" +
+          (err?.message || "réseau/token/droits") +
+          ").",
         "error"
       );
-      console.error(err);
     }
 
-    // Reset partiel : on garde la date du jour + créneau, et le nom (stocké)
-    if (commentsInput) commentsInput.value = "";
-    ensureDefaultDateAndSlot();
+    // Reset partiel
+    commentsInput.value = "";
+    ensureDefaults();
+  });
+
+  changeNameBtn?.addEventListener("click", () => {
+    localStorage.removeItem(STORAGE_NAME_KEY);
+    applyStoredNameUI();
+    setStatus("Nom réinitialisé.", "info");
   });
 
   exportCsvBtn?.addEventListener("click", () => {
-    if (!sessions.length) {
-      alert("Aucune séance à exporter.");
-      return;
-    }
+    if (!sessions.length) return alert("Aucune séance à exporter.");
+
     const headers = [
       "Nom",
       "Date",
@@ -302,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
       s.performance,
       s.engagement,
       s.fatigue,
-      computeTrainingLoad(s.duration, s.rpe),
+      computeLoad(s.duration, s.rpe),
       (s.comments || "").replace(/\n/g, " "),
     ]);
 
@@ -320,12 +306,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   exportJsonBtn?.addEventListener("click", () => {
-    if (!sessions.length) {
-      alert("Aucune séance à exporter.");
-      return;
-    }
+    if (!sessions.length) return alert("Aucune séance à exporter.");
+
     const blob = new Blob([JSON.stringify(sessions, null, 2)], {
-      type: "application/json;charset=utf-8;",
+      type: "application/json;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
 
@@ -347,9 +331,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ====== INIT ======
-  setStatus("", "info"); // éviter tout message au chargement
+  setStatus("", "");
   loadSessions();
-  applyStoredNameBehavior();
-  ensureDefaultDateAndSlot();
+  applyStoredNameUI();
+  ensureDefaults();
   updateTable();
 });
