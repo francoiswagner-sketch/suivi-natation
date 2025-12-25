@@ -22,23 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const storedNameEl = document.getElementById('storedName');
   const changeNameBtn = document.getElementById('changeName');
 
-  // Entrées de type range et leurs affichages correspondants
-  const durationInput = document.getElementById('duration');
-  const durationValue = document.getElementById('duration-value');
-  const rpeInput = document.getElementById('rpe');
-  const rpeValue = document.getElementById('rpe-value');
-  const performanceInput = document.getElementById('performance');
-  const performanceValue = document.getElementById('performance-value');
-  const engagementInput = document.getElementById('engagement');
-  const engagementValue = document.getElementById('engagement-value');
-  const fatigueInput = document.getElementById('fatigue');
-  const fatigueValue = document.getElementById('fatigue-value');
+  // Les champs de saisie (durée, RPE, etc.) sont des listes déroulantes (select)
+  // pour limiter l'usage du clavier et guider le nageur avec des libellés.
 
   // Point d'API pour la synchronisation automatique (Google Apps Script Web App)
-  // IMPORTANT : remplacez VOTRE_TOKEN_SECRET par le même token que dans Apps Script (SHARED_TOKEN).
+  // IMPORTANT : le token doit correspondre à SHARED_TOKEN dans Apps Script.
   const SYNC_ENDPOINT =
-  'https://script.google.com/macros/s/AKfycbwYV8nDCmm6LbYtZRlmLRPepd1eH2qd9D909i8UCcJCTjRiGzo4OiNKgRWtX4rUmIhYgQ/exec?token=ersteinaquaticclub2026';
-
+    'https://script.google.com/macros/s/AKfycbwYV8nDCmm6LbYtZRlmLRPepd1eH2qd9D909i8UCcJCTjRiGzo4OiNKgRWtX4rUmIhYgQ/exec?token=ersteinaquaticclub2026';
 
   // Tableau interne pour stocker les séances chargées depuis le localStorage
   let sessions = [];
@@ -66,27 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Met à jour l'affichage des entrées range lorsque l'utilisateur
-   * modifie leur valeur. Chaque champ range dispose d'un span
-   * associé pour afficher la valeur courante.
-   */
-  function setupRangeUpdates() {
-    function bindRange(input, output) {
-      if (!input || !output) return;
-      output.textContent = input.value;
-      input.addEventListener('input', () => {
-        output.textContent = input.value;
-      });
-    }
-    bindRange(durationInput, durationValue);
-    bindRange(rpeInput, rpeValue);
-    bindRange(performanceInput, performanceValue);
-    bindRange(engagementInput, engagementValue);
-    bindRange(fatigueInput, fatigueValue);
-  }
-
-  /**
-   * Charge et affiche le nom du nageur depuis le localStorage.
+   * Charge et affiche le nom du nageur depuis le localStorage. Si un nom est
+   * stocké, l'input de saisie est masqué et remplacé par un affichage
+   * en lecture seule avec un bouton pour changer le nom.
    */
   function loadStoredName() {
     const stored = localStorage.getItem('swimmerName');
@@ -101,11 +73,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Envoie la séance à Google Apps Script si SYNC_ENDPOINT est défini.
+   * Envoie la séance à un service distant si un point de synchronisation est
+   * défini. Cette fonction utilise fetch pour effectuer un POST vers
+   * SYNC_ENDPOINT avec les données de la séance. En cas d'échec,
+   * l'erreur est simplement journalisée sans bloquer l'enregistrement local.
+   * @param {Object} session Les données de la séance à synchroniser
    */
   function syncSession(session) {
-    if (!SYNC_ENDPOINT) return;
-
+    if (!SYNC_ENDPOINT) {
+      return;
+    }
     // Apps Script Web App : envoyer le JSON en *texte* pour éviter le preflight CORS
     // et suivre les redirections (Apps Script renvoie souvent un 302).
     fetch(SYNC_ENDPOINT, {
@@ -123,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!response.ok) {
           throw new Error(`Code HTTP inattendu : ${response.status}`);
         }
+        // Optionnel : gérer la réponse si besoin
       })
       .catch((error) => {
         console.error('Erreur lors de la synchronisation :', error);
@@ -130,7 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Met à jour l'affichage du tableau des séances.
+   * Met à jour l'affichage du tableau des séances. Affiche ou masque
+   * le tableau et le message d'absence de données selon le cas.
    */
   function updateTable() {
     sessionsBody.innerHTML = '';
@@ -141,9 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     sessionsTable.classList.remove('hidden');
     noSessions.classList.add('hidden');
-
     sessions.forEach((session) => {
       const tr = document.createElement('tr');
+      // Définit les labels pour chaque colonne afin de faciliter l'affichage sur mobile
       const labels = [
         'Nom',
         'Date',
@@ -155,66 +134,70 @@ document.addEventListener('DOMContentLoaded', () => {
         'Charge',
         'Commentaires'
       ];
-
+      // Nom
       const nameCell = document.createElement('td');
       nameCell.textContent = session.athleteName;
       nameCell.setAttribute('data-label', labels[0]);
       tr.appendChild(nameCell);
-
+      // Date et heure (format local lisible)
       const dateCell = document.createElement('td');
       let dateStr;
       try {
         const date = new Date(session.sessionDate);
-        dateStr = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+        dateStr = date.toLocaleString(undefined, {
+          dateStyle: 'short',
+          timeStyle: 'short'
+        });
       } catch (e) {
         dateStr = session.sessionDate;
       }
       dateCell.textContent = dateStr;
       dateCell.setAttribute('data-label', labels[1]);
       tr.appendChild(dateCell);
-
+      // Durée
       const durationCell = document.createElement('td');
       durationCell.textContent = session.duration;
       durationCell.setAttribute('data-label', labels[2]);
       tr.appendChild(durationCell);
-
+      // RPE
       const rpeCell = document.createElement('td');
       rpeCell.textContent = session.rpe;
       rpeCell.setAttribute('data-label', labels[3]);
       tr.appendChild(rpeCell);
-
+      // Performance perçue
       const perfCell = document.createElement('td');
       perfCell.textContent = session.performance;
       perfCell.setAttribute('data-label', labels[4]);
       tr.appendChild(perfCell);
-
+      // Engagement
       const engagementCell = document.createElement('td');
       engagementCell.textContent = session.engagement;
       engagementCell.setAttribute('data-label', labels[5]);
       tr.appendChild(engagementCell);
-
+      // Fatigue
       const fatigueCell = document.createElement('td');
       fatigueCell.textContent = session.fatigue;
       fatigueCell.setAttribute('data-label', labels[6]);
       tr.appendChild(fatigueCell);
-
+      // Charge d'entraînement (Durée x RPE)
       const loadCell = document.createElement('td');
       const load = session.duration * session.rpe;
       loadCell.textContent = load;
       loadCell.setAttribute('data-label', labels[7]);
       tr.appendChild(loadCell);
-
+      // Commentaires
       const commentsCell = document.createElement('td');
       commentsCell.textContent = session.comments || '';
       commentsCell.setAttribute('data-label', labels[8]);
       tr.appendChild(commentsCell);
-
       sessionsBody.appendChild(tr);
     });
   }
 
   /**
-   * Ajoute une nouvelle séance au tableau interne.
+   * Ajoute une nouvelle séance au tableau interne, puis sauvegarde
+   * et met à jour l'affichage.
+   * @param {Object} session Un objet contenant les données de la séance
    */
   function addSession(session) {
     sessions.push(session);
@@ -222,10 +205,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTable();
   }
 
-  // Soumission du formulaire
+  // Gestion de la soumission du formulaire
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-
+    // Récupération et nettoyage des données du formulaire
     let athleteName;
     const storedName = localStorage.getItem('swimmerName');
     if (storedName) {
@@ -233,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       athleteName = form.athleteName.value.trim();
     }
-
     const sessionDate = form.sessionDate.value;
     const duration = parseInt(form.duration.value, 10);
     const rpe = parseInt(form.rpe.value, 10);
@@ -241,18 +223,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const engagement = parseInt(form.engagement.value, 10);
     const fatigue = parseInt(form.fatigue.value, 10);
     const comments = form.comments.value.trim();
-
     // Enregistrer le nom si ce n'est pas déjà fait
     if (!storedName && athleteName) {
       localStorage.setItem('swimmerName', athleteName);
       loadStoredName();
     }
-
     if (!athleteName || !sessionDate || isNaN(duration) || isNaN(rpe)) {
       alert('Merci de remplir tous les champs obligatoires.');
       return;
     }
-
     const session = {
       athleteName,
       sessionDate,
@@ -263,23 +242,22 @@ document.addEventListener('DOMContentLoaded', () => {
       fatigue,
       comments
     };
-
     addSession(session);
-
-    // Synchronisation distante
+    // Synchronisation distante si un endpoint est configuré
     syncSession(session);
-
-    // Reset formulaire et refresh affichage sliders
+    // Réinitialiser le formulaire (sauf le nom si enregistré)
     form.reset();
-    setupRangeUpdates();
   });
 
-  // Export CSV (secours)
+  /**
+   * Transforme les données en chaîne CSV et déclenche un téléchargement.
+   */
   exportCsvBtn.addEventListener('click', () => {
     if (sessions.length === 0) {
       alert('Aucune séance à exporter.');
       return;
     }
+    // Définition de l'en-tête du CSV
     const headers = ['Nom', 'Date et heure', 'Durée (min)', 'RPE', 'Performance', 'Engagement', 'Fatigue', 'Charge', 'Commentaires'];
     const rows = sessions.map((s) => {
       const date = new Date(s.sessionDate).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
@@ -308,7 +286,9 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(url);
   });
 
-  // Export JSON (secours)
+  /**
+   * Transforme les données en JSON et déclenche un téléchargement.
+   */
   exportJsonBtn.addEventListener('click', () => {
     if (sessions.length === 0) {
       alert('Aucune séance à exporter.');
@@ -325,18 +305,21 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(url);
   });
 
-  // Clear data
+  /**
+   * Supprime toutes les séances après confirmation de l'utilisateur.
+   */
   clearDataBtn.addEventListener('click', () => {
-    if (!confirm('Voulez-vous vraiment supprimer toutes les données enregistrées ?')) return;
+    if (!confirm('Voulez‑vous vraiment supprimer toutes les données enregistrées ?')) {
+      return;
+    }
     sessions = [];
     saveSessions();
     updateTable();
   });
 
-  // Init
-  setupRangeUpdates();
+  // Chargement du nom enregistré
   loadStoredName();
-
+  // Permettre à l'utilisateur de changer son nom enregistré
   if (changeNameBtn) {
     changeNameBtn.addEventListener('click', () => {
       localStorage.removeItem('swimmerName');
@@ -344,5 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Initialisation des données au chargement
   loadSessions();
 });
