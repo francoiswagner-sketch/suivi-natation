@@ -120,6 +120,19 @@ button[type='submit'] {
   flex-wrap: wrap;
 }
 
+.sync-status {
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.sync-status.ok {
+  color: #0a7a29;
+}
+
+.sync-status.err {
+  color: #b42318;
+}
+
 button.secondary {
   background: #fff;
   border: 1px solid var(--border-color);
