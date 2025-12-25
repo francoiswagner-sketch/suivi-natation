@@ -548,7 +548,7 @@ function computeLoad(duration, rpe) {
     clearCanvas(ctx, w, h);
 
     // empty state
-    if (!points || points.length < 2) {
+    if (!points || points.length < 1) {
       ctx.font = `${Math.round(12 * (window.devicePixelRatio || 1))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
       ctx.fillStyle = "#6b7280";
       ctx.textAlign = "center";
@@ -895,6 +895,7 @@ const zonesHighGood = [
 
   coachAthleteSelect?.addEventListener("change", () => {
     renderCoachKpisAndCharts();
+    requestAnimationFrame(() => renderCoachKpisAndCharts());
   });
 
   coachRefreshBtn?.addEventListener("click", async () => {
@@ -907,6 +908,7 @@ const zonesHighGood = [
       setStatus("Récupération coach…", "info");
       coachSessions = await fetchSessionsFromSheetsFor(athlete, 200);
       renderCoachKpisAndCharts();
+      requestAnimationFrame(() => renderCoachKpisAndCharts());
       setStatus("✅ Données coach mises à jour.", "success");
     } catch (e) {
       console.error(e);
