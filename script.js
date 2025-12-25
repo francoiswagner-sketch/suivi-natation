@@ -68,9 +68,19 @@ document.addEventListener('DOMContentLoaded', () => {
       athleteNameWrapper.classList.add('hidden');
       storedNameDisplay.classList.remove('hidden');
       storedNameEl.textContent = stored;
+      // Important : certains navigateurs bloquent l'envoi du formulaire
+      // si un champ requis (même masqué) est vide. On garde l'input rempli
+      // et on le désactive pour éviter toute saisie clavier.
+      if (form.athleteName) {
+        form.athleteName.value = stored;
+        form.athleteName.disabled = true;
+      }
     } else {
       athleteNameWrapper.classList.remove('hidden');
       storedNameDisplay.classList.add('hidden');
+      if (form.athleteName) {
+        form.athleteName.disabled = false;
+      }
     }
   }
 
@@ -79,6 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
     syncStatus.textContent = message || '';
     syncStatus.classList.remove('ok', 'err');
     if (kind) syncStatus.classList.add(kind);
+    // Masquer le bloc quand il n'y a pas de message (évite un faux état d'erreur)
+    syncStatus.style.display = message ? 'block' : 'none';
   }
 
   /**
@@ -292,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Définition de l'en-tête du CSV
     const headers = ['Nom', 'Date et heure', 'Durée (min)', 'RPE', 'Performance', 'Engagement', 'Fatigue', 'Charge', 'Commentaires'];
     const rows = sessions.map((s) => {
-      const date = new Date(s.sessionDate).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+      const date = String(s.sessionDate || '');
       const load = s.duration * s.rpe;
       return [
         s.athleteName,
@@ -352,6 +364,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Chargement du nom enregistré
   loadStoredName();
 
+  // S'assurer que l'état de synchro est neutre au chargement
+  setStatus('', null);
+
   // Valeur par défaut : date du jour
   if (form.sessionDate) {
     form.sessionDate.valueAsDate = new Date();
@@ -360,7 +375,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (changeNameBtn) {
     changeNameBtn.addEventListener('click', () => {
       localStorage.removeItem('swimmerName');
+      if (form.athleteName) {
+        form.athleteName.disabled = false;
+        form.athleteName.value = '';
+      }
       loadStoredName();
+      if (form.athleteName) form.athleteName.focus();
     });
   }
 
