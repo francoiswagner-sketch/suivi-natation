@@ -19,11 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ====== DOM ======
   const form = document.getElementById("session-form");
 
-  const athleteNameWrapper = document.getElementById("athleteNameWrapper");
-  const athleteNameInput = document.getElementById("athleteName");
-  const storedNameDisplay = document.getElementById("storedNameDisplay");
-  const storedNameEl = document.getElementById("storedName");
-  const changeNameBtn = document.getElementById("changeName");
+  const accountAccessBtn = document.getElementById("account-access");
+  const accountNameEl = document.getElementById("account-name");
 
   const sessionDateInput = document.getElementById("sessionDate");
   const timeSlotSelect = document.getElementById("timeSlot");
@@ -328,24 +325,14 @@ function computeLoad(duration, rpe) {
   function applyStoredNameUI() {
     const stored = localStorage.getItem(STORAGE_NAME_KEY);
     if (stored) {
-      if (storedNameEl) storedNameEl.textContent = stored;
-      storedNameDisplay?.classList.remove("hidden");
-      athleteNameWrapper?.classList.add("hidden");
-
-      // Évite les blocages Safari iOS (required + champ caché)
-      if (athleteNameInput) {
-        athleteNameInput.value = stored;
-        athleteNameInput.disabled = true;
-        athleteNameInput.removeAttribute("required");
+      if (accountNameEl) {
+        accountNameEl.textContent = stored;
+        accountNameEl.classList.remove("hidden");
       }
     } else {
-      storedNameDisplay?.classList.add("hidden");
-      athleteNameWrapper?.classList.remove("hidden");
-
-      if (athleteNameInput) {
-        athleteNameInput.disabled = false;
-        athleteNameInput.setAttribute("required", "required");
-        athleteNameInput.value = "";
+      if (accountNameEl) {
+        accountNameEl.textContent = "";
+        accountNameEl.classList.add("hidden");
       }
     }
   }
@@ -972,7 +959,7 @@ function drawLineChart(canvas, points, opts) {
   async function fetchLatestSessions() {
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
     if (!storedName) {
-      setStatus("Merci d’abord de renseigner votre nom (en haut).", "error");
+      setStatus("Veuillez vous connecter pour pouvoir récupérer vos séances.", "error");
       return;
     }
     if (!SYNC_ENDPOINT) {
@@ -1059,7 +1046,7 @@ function drawLineChart(canvas, points, opts) {
     }
 
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
-    const athleteName = (storedName || athleteNameInput?.value || "").trim();
+    const athleteName = (storedName || "").trim();
 
     const sessionDate = sessionDateInput?.value || "";
     const sessionDateISO = toISODateString(sessionDate);
@@ -1074,16 +1061,11 @@ function drawLineChart(canvas, points, opts) {
     const fatigue = safeInt(fatigueSelect?.value);
     const comments = (commentsInput?.value || "").trim();
 
-    if (!athleteName) return setStatus("Merci d’indiquer votre nom.", "error");
+    if (!athleteName) return setStatus("Veuillez vous connecter pour pouvoir ajouter une séance.", "error");
     if (!sessionDateISO) return setStatus("Merci de sélectionner une date.", "error");
     if (!timeSlot) return setStatus("Merci de choisir Matin ou Soir.", "error");
     if ([duration, rpe, performance, engagement, fatigue].some((x) => Number.isNaN(x))) {
       return setStatus("Merci de sélectionner toutes les valeurs.", "error");
-    }
-
-    if (!storedName) {
-      localStorage.setItem(STORAGE_NAME_KEY, athleteName);
-      applyStoredNameUI();
     }
 
     const session = {
@@ -1280,10 +1262,17 @@ function drawLineChart(canvas, points, opts) {
     }
   });
 
-changeNameBtn?.addEventListener("click", () => {
-    localStorage.removeItem(STORAGE_NAME_KEY);
+  accountAccessBtn?.addEventListener("click", () => {
+    const name = prompt("Nom du nageur :");
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setStatus("Nom invalide.", "error");
+      return;
+    }
+    localStorage.setItem(STORAGE_NAME_KEY, trimmed);
     applyStoredNameUI();
-    setStatus("Nom réinitialisé.", "info");
+    setStatus(`Connecté en tant que ${trimmed}.`, "success");
     updateTable();
     renderKpis();
     renderCharts();

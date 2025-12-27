@@ -24,6 +24,16 @@
 
     <div class="club-header-right">
       <div class="club-header-actions">
+        <button id="account-access" type="button" class="account-btn" aria-label="Se connecter">
+          <span class="account-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"></circle>
+              <path d="M4 20c0-4.2 3.6-7 8-7s8 2.8 8 7"></path>
+            </svg>
+          </span>
+          <span class="account-label">Se connecter</span>
+        </button>
+        <span id="account-name" class="account-name hidden"></span>
         <button id="coach-access" type="button" class="coach-btn">Accès coach</button>
         <button id="profile-access" type="button" class="profile-btn">Ma fiche nageur</button>
       </div>
@@ -33,23 +43,6 @@
 
     <main>
       <form id="session-form">
-        <div id="athleteNameWrapper" class="form-group">
-          <label for="athleteName">Votre nom :</label>
-          <input
-            type="text"
-            id="athleteName"
-            name="athleteName"
-            placeholder="Nom du nageur"
-            required
-          />
-        </div>
-
-        <div id="storedNameDisplay" class="form-group hidden">
-          <label>Nom :</label>
-          <span id="storedName"></span>
-          <button type="button" id="changeName" class="secondary">Changer de nom</button>
-        </div>
-
         <div class="form-group">
           <label for="sessionDate">Date de la séance :</label>
           <input type="date" id="sessionDate" name="sessionDate" required />
