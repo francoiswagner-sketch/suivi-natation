@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_SESSIONS_KEY = "swimSessions";
   const STORAGE_NAME_KEY = "swimmerName";
   const STORAGE_RANGE_KEY = "kpiRangeDays"; // 7 | 30 | 365
+  const MAX_LOCAL_SESSIONS = 400;
+  const MAX_LOCAL_DAYS = 365;
 
   // ====== DOM ======
   const form = document.getElementById("session-form");
@@ -312,13 +314,14 @@ function computeLoad(duration, rpe) {
     const raw = localStorage.getItem(STORAGE_SESSIONS_KEY);
     try {
       const parsed = raw ? JSON.parse(raw) : [];
-      sessions = Array.isArray(parsed) ? parsed : [];
+      sessions = Array.isArray(parsed) ? trimSessions(parsed) : [];
     } catch {
       sessions = [];
     }
   }
 
   function saveSessions() {
+    sessions = trimSessions(sessions);
     localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(sessions));
   }
 
@@ -530,6 +533,19 @@ function computeLoad(duration, rpe) {
     });
   }
 
+  function trimSessions(list) {
+    const now = new Date();
+    const from = new Date(now);
+    from.setDate(from.getDate() - MAX_LOCAL_DAYS);
+
+    const filtered = (list || []).filter((s) => {
+      const dt = parseAnyDateToDate(s.sessionDate);
+      return Number.isFinite(dt.getTime()) && dt >= from;
+    });
+
+    return sortSessionsDesc(filtered).slice(0, MAX_LOCAL_SESSIONS);
+  }
+
   function getMine() {
     const storedName = localStorage.getItem(STORAGE_NAME_KEY) || "";
     return storedName ? sessions.filter((s) => s.athleteName === storedName) : sessions.slice();
@@ -682,8 +698,6 @@ function computeLoad(duration, rpe) {
 
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) {
       kpisEl.innerHTML = "";
       return;
@@ -901,8 +915,6 @@ function drawLineChart(canvas, points, opts) {
   function renderCharts() {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     const inRange = filterByDays(mine, rangeDays);
 
     const rpePts = groupDailyAverage(inRange, "rpe");
@@ -1015,7 +1027,7 @@ function drawLineChart(canvas, points, opts) {
     // Merge + dedupe
     const byKey = new Map();
     [...sessions, ...fetched].forEach((s) => byKey.set(sessionKey(s), s));
-    sessions = sortSessionsDesc([...byKey.values()]);
+    sessions = trimSessions([...byKey.values()]);
     saveSessions();
 
     updateRangeButtons();
@@ -1050,6 +1062,7 @@ function drawLineChart(canvas, points, opts) {
     const athleteName = (storedName || athleteNameInput?.value || "").trim();
 
     const sessionDate = sessionDateInput?.value || "";
+    const sessionDateISO = toISODateString(sessionDate);
     const timeSlot = timeSlotSelect?.value || "";
 
     const duration = safeInt(durationSelect?.value);
@@ -1062,7 +1075,7 @@ function drawLineChart(canvas, points, opts) {
     const comments = (commentsInput?.value || "").trim();
 
     if (!athleteName) return setStatus("Merci d’indiquer votre nom.", "error");
-    if (!sessionDate) return setStatus("Merci de sélectionner une date.", "error");
+    if (!sessionDateISO) return setStatus("Merci de sélectionner une date.", "error");
     if (!timeSlot) return setStatus("Merci de choisir Matin ou Soir.", "error");
     if ([duration, rpe, performance, engagement, fatigue].some((x) => Number.isNaN(x))) {
       return setStatus("Merci de sélectionner toutes les valeurs.", "error");
@@ -1075,7 +1088,7 @@ function drawLineChart(canvas, points, opts) {
 
     const session = {
       athleteName,
-      sessionDate,
+      sessionDate: sessionDateISO,
       timeSlot,
       duration,
       distance: distance || "",
@@ -1087,7 +1100,7 @@ function drawLineChart(canvas, points, opts) {
     };
 
     sessions.unshift(session);
-    sessions = sortSessionsDesc(sessions);
+    sessions = trimSessions(sessions);
     saveSessions();
 
     updateRangeButtons();
@@ -1306,8 +1319,6 @@ changeNameBtn?.addEventListener("click", () => {
   });exportCsvBtn?.addEventListener("click", () => {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) return alert("Aucune séance à exporter.");
 
     const headers = [
@@ -1353,8 +1364,6 @@ changeNameBtn?.addEventListener("click", () => {
   exportJsonBtn?.addEventListener("click", () => {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) return alert("Aucune séance à exporter.");
 
     const blob = new Blob([JSON.stringify(mine, null, 2)], {
