@@ -417,12 +417,6 @@ canvas{
   align-items: flex-end;
 }
 
-.account-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .account-btn {
   display: inline-flex;
   align-items: center;
@@ -433,10 +427,6 @@ canvas{
   padding: 8px 12px;
   border-radius: 999px;
   font-weight: 700;
-}
-
-.account-btn.is-connected {
-  background: rgba(255, 255, 255, 0.28);
 }
 
 .account-btn svg {

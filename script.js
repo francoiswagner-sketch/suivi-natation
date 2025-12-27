@@ -329,22 +329,10 @@ function computeLoad(duration, rpe) {
         accountNameEl.textContent = stored;
         accountNameEl.classList.remove("hidden");
       }
-      if (accountAccessBtn) {
-        accountAccessBtn.classList.add("is-connected");
-        accountAccessBtn.setAttribute("aria-label", "Connecté");
-        const label = accountAccessBtn.querySelector(".account-label");
-        if (label) label.textContent = "Connecté";
-      }
     } else {
       if (accountNameEl) {
         accountNameEl.textContent = "";
         accountNameEl.classList.add("hidden");
-      }
-      if (accountAccessBtn) {
-        accountAccessBtn.classList.remove("is-connected");
-        accountAccessBtn.setAttribute("aria-label", "Se connecter");
-        const label = accountAccessBtn.querySelector(".account-label");
-        if (label) label.textContent = "Se connecter";
       }
     }
   }
