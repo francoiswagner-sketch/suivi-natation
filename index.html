@@ -257,7 +257,10 @@
       <section id="hof-section" class="hidden">
         <div class="section-head">
           <h2>Hall of Fame</h2>
-          <button id="hof-exit" class="secondary" type="button">Retour</button>
+          <div class="section-actions">
+            <button id="hof-refresh" class="secondary" type="button">Rafraîchir</button>
+            <button id="hof-exit" class="secondary" type="button">Retour</button>
+          </div>
         </div>
 
         <div class="kpi-toolbar">
@@ -266,10 +269,6 @@
             <button type="button" class="hof-range-btn range-btn" data-range="30">30 jours</button>
             <button type="button" class="hof-range-btn range-btn" data-range="365">365 jours</button>
           </div>
-        </div>
-
-        <div class="actions">
-          <button id="hof-refresh" class="secondary" type="button">Rafraîchir</button>
         </div>
 
         <div id="hof-status" class="sync-status" aria-live="polite"></div>
