@@ -145,6 +145,13 @@ button.danger {
   font-size: 1.15rem;
 }
 
+.section-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -410,6 +417,48 @@ canvas{
   align-items: flex-end;
 }
 
+.account-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.account-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.account-btn.is-connected {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.account-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.account-name {
+  order: -1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
 .hof-btn,
 .profile-btn,
 .coach-btn {
@@ -429,6 +478,10 @@ canvas{
 .profile-btn:hover,
 .coach-btn:hover {
   background: rgba(255, 255, 255, 0.18);
+}
+
+.account-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 @media (max-width: 640px) {
@@ -477,3 +530,33 @@ canvas{
 .hof-list li:last-child{border-bottom:none;}
 .hof-name{font-weight:600;}
 .hof-metric{color:var(--muted);font-variant-numeric:tabular-nums;}
+
+/* Exercises list (coach) */
+.exercises-list {
+  display: grid;
+  gap: 12px;
+}
+
+.exercise-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.exercise-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.exercise-open {
+  border-radius: 999px;
+  padding: 0.6rem 1.2rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+}
