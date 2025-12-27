@@ -66,6 +66,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const profileAccessBtn = document.getElementById("profile-access");
   const profileExitBtn = document.getElementById("profile-exit");
   const profileSection = document.getElementById("profile-section");
+  const exercisesRefreshBtn = document.getElementById("exercises-refresh");
+  const exercisesStatusEl = document.getElementById("exercises-status");
+  const exercisesTable = document.getElementById("exercises-table");
+  const exercisesBody = exercisesTable ? exercisesTable.querySelector("tbody") : null;
 
   const hallOfFameBtn = document.getElementById("hall-of-fame");
   const hallOfFameExitBtn = document.getElementById("hof-exit");
@@ -154,6 +158,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (type) hofStatusEl.classList.add(type);
   }
 
+  function setExercisesStatus(message, type = "") {
+    if (!exercisesStatusEl) return;
+    exercisesStatusEl.textContent = message || "";
+    exercisesStatusEl.classList.remove("success", "error", "info");
+    if (type) exercisesStatusEl.classList.add(type);
+  }
+
   function setActiveRangeButtons(buttons, active) {
     buttons.forEach((b) => b.classList.toggle("active", String(b.dataset.range) === String(active)));
   }
@@ -228,6 +239,57 @@ document.addEventListener("DOMContentLoaded", () => {
     renderHofList(hofEngagementList, byEng, (r) => (r.engagementAvg != null ? r.engagementAvg.toFixed(2) : "—"));
 
     setHofStatus(`✅ Classements mis à jour (${days} jours)`, "success");
+  }
+
+  async function fetchExercises() {
+    if (!SYNC_ENDPOINT) throw new Error("Endpoint non configuré");
+    const url = new URL(SYNC_ENDPOINT);
+    url.searchParams.set("action", "exercises");
+
+    setExercisesStatus("Chargement…", "info");
+    const res = await fetch(url.toString(), { method: "GET", redirect: "follow" });
+    const txt = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt}`);
+
+    let data;
+    try { data = JSON.parse(txt); } catch { throw new Error("Réponse non JSON : " + txt.slice(0, 120)); }
+    if (!data || data.ok !== true || !Array.isArray(data.exercises)) {
+      throw new Error(data && data.error ? data.error : "Format inattendu");
+    }
+
+    renderExercises(data.exercises);
+    setExercisesStatus(`✅ ${data.exercises.length} exercice(s) chargés.`, "success");
+  }
+
+  function renderExercises(exercises) {
+    if (!exercisesBody || !exercisesTable) return;
+    exercisesBody.innerHTML = "";
+    if (!exercises.length) {
+      exercisesTable.classList.add("hidden");
+      return;
+    }
+    exercisesTable.classList.remove("hidden");
+
+    exercises.forEach((ex) => {
+      const tr = document.createElement("tr");
+      const td = (val) => {
+        const cell = document.createElement("td");
+        cell.textContent = val == null ? "" : String(val);
+        return cell;
+      };
+
+      const endurance = `${ex.nbSeriesEndurance || ""}x${ex.nbRepsEndurance || ""} · ${ex.pct1rmEndurance || ""}% · ${ex.recupSeriesEndurance || ""}/${ex.recupExercicesEndurance || ""}s`;
+      const hypertrophie = `${ex.nbSeriesHypertrophie || ""}x${ex.nbRepsHypertrophie || ""} · ${ex.pct1rmHypertrophie || ""}% · ${ex.recupSeriesHypertrophie || ""}/${ex.recupExercicesHypertrophie || ""}s`;
+      const force = `${ex.nbSeriesForce || ""}x${ex.nbRepsForce || ""} · ${ex.pct1rmForce || ""}% · ${ex.recupSeriesForce || ""}/${ex.recupExercicesForce || ""}s`;
+
+      tr.appendChild(td(ex.numeroExercice || ""));
+      tr.appendChild(td(ex.nomExercice || ""));
+      tr.appendChild(td(ex.description || ""));
+      tr.appendChild(td(endurance.trim()));
+      tr.appendChild(td(hypertrophie.trim()));
+      tr.appendChild(td(force.trim()));
+      exercisesBody.appendChild(tr);
+    });
   }
 function safeInt(v) {
     if (v === "" || v === null || v === undefined) return NaN;
@@ -1173,6 +1235,12 @@ function drawLineChart(canvas, points, opts) {
   profileAccessBtn?.addEventListener("click", () => {
     setStatus("", "");
     setAppView("profile");
+    if (!document.getElementById("tab-strength")?.classList.contains("hidden")) {
+      fetchExercises().catch((err) => {
+        console.error(err);
+        setExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
+      });
+    }
   });
 
   profileExitBtn?.addEventListener("click", () => {
@@ -1235,6 +1303,19 @@ function drawLineChart(canvas, points, opts) {
       const tab = btn.getAttribute("data-tab");
       document.getElementById("tab-strength")?.classList.toggle("hidden", tab !== "strength");
       document.getElementById("tab-performances")?.classList.toggle("hidden", tab !== "performances");
+      if (tab === "strength") {
+        fetchExercises().catch((err) => {
+          console.error(err);
+          setExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
+        });
+      }
+    });
+  });
+
+  exercisesRefreshBtn?.addEventListener("click", () => {
+    fetchExercises().catch((err) => {
+      console.error(err);
+      setExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
     });
   });
 

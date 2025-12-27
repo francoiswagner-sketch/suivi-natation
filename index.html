@@ -239,6 +239,26 @@
           <div class="info card">
             Bientôt : suivi des séances de musculation (exercices, séries, charges).
           </div>
+          <div class="card">
+            <div class="section-head">
+              <h3>Base d'exercices</h3>
+              <button id="exercises-refresh" class="secondary" type="button">Rafraîchir</button>
+            </div>
+            <div id="exercises-status" class="sync-status" aria-live="polite"></div>
+            <table id="exercises-table" class="hidden">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Exercice</th>
+                  <th>Description</th>
+                  <th>Endurance</th>
+                  <th>Hypertrophie</th>
+                  <th>Force</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
 
         <div id="tab-performances" class="tab-panel hidden">
