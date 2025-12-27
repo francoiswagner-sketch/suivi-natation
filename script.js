@@ -258,7 +258,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     renderExercises(data.exercises);
-    setExercisesStatus(`✅ ${data.exercises.length} exercice(s) chargés.`, "success");
+    if (data.exercises.length) {
+      setExercisesStatus(`✅ ${data.exercises.length} exercice(s) chargés.`, "success");
+    } else {
+      setExercisesStatus("Aucun exercice disponible.", "info");
+    }
   }
 
   function renderExercises(exercises) {
@@ -278,9 +282,13 @@ document.addEventListener("DOMContentLoaded", () => {
         return cell;
       };
 
-      const endurance = `${ex.nbSeriesEndurance || ""}x${ex.nbRepsEndurance || ""} · ${ex.pct1rmEndurance || ""}% · ${ex.recupSeriesEndurance || ""}/${ex.recupExercicesEndurance || ""}s`;
-      const hypertrophie = `${ex.nbSeriesHypertrophie || ""}x${ex.nbRepsHypertrophie || ""} · ${ex.pct1rmHypertrophie || ""}% · ${ex.recupSeriesHypertrophie || ""}/${ex.recupExercicesHypertrophie || ""}s`;
-      const force = `${ex.nbSeriesForce || ""}x${ex.nbRepsForce || ""} · ${ex.pct1rmForce || ""}% · ${ex.recupSeriesForce || ""}/${ex.recupExercicesForce || ""}s`;
+      const pctEndurance = ex.pct1rmEndurance ? `${ex.pct1rmEndurance}` : "";
+      const pctHypertrophie = ex.pct1rmHypertrophie ? `${ex.pct1rmHypertrophie}` : "";
+      const pctForce = ex.pct1rmForce ? `${ex.pct1rmForce}` : "";
+
+      const endurance = `${ex.nbSeriesEndurance || ""}x${ex.nbRepsEndurance || ""} · ${pctEndurance} · ${ex.recupSeriesEndurance || ""}/${ex.recupExercicesEndurance || ""}s`;
+      const hypertrophie = `${ex.nbSeriesHypertrophie || ""}x${ex.nbRepsHypertrophie || ""} · ${pctHypertrophie} · ${ex.recupSeriesHypertrophie || ""}/${ex.recupExercicesHypertrophie || ""}s`;
+      const force = `${ex.nbSeriesForce || ""}x${ex.nbRepsForce || ""} · ${pctForce} · ${ex.recupSeriesForce || ""}/${ex.recupExercicesForce || ""}s`;
 
       tr.appendChild(td(ex.numeroExercice || ""));
       tr.appendChild(td(ex.nomExercice || ""));
