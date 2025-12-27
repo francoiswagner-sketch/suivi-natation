@@ -13,15 +13,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_SESSIONS_KEY = "swimSessions";
   const STORAGE_NAME_KEY = "swimmerName";
   const STORAGE_RANGE_KEY = "kpiRangeDays"; // 7 | 30 | 365
+  const MAX_LOCAL_SESSIONS = 400;
+  const MAX_LOCAL_DAYS = 365;
 
   // ====== DOM ======
   const form = document.getElementById("session-form");
 
-  const athleteNameWrapper = document.getElementById("athleteNameWrapper");
-  const athleteNameInput = document.getElementById("athleteName");
-  const storedNameDisplay = document.getElementById("storedNameDisplay");
-  const storedNameEl = document.getElementById("storedName");
-  const changeNameBtn = document.getElementById("changeName");
+  const accountAccessBtn = document.getElementById("account-access");
+  const accountNameEl = document.getElementById("account-name");
 
   const sessionDateInput = document.getElementById("sessionDate");
   const timeSlotSelect = document.getElementById("timeSlot");
@@ -67,6 +66,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const profileAccessBtn = document.getElementById("profile-access");
   const profileExitBtn = document.getElementById("profile-exit");
   const profileSection = document.getElementById("profile-section");
+  const exercisesRefreshBtn = document.getElementById("exercises-refresh");
+  const exercisesStatusEl = document.getElementById("exercises-status");
+  const exercisesTable = document.getElementById("exercises-table");
+  const exercisesBody = exercisesTable ? exercisesTable.querySelector("tbody") : null;
 
   const hallOfFameBtn = document.getElementById("hall-of-fame");
   const hallOfFameExitBtn = document.getElementById("hof-exit");
@@ -155,6 +158,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (type) hofStatusEl.classList.add(type);
   }
 
+  function setExercisesStatus(message, type = "") {
+    if (!exercisesStatusEl) return;
+    exercisesStatusEl.textContent = message || "";
+    exercisesStatusEl.classList.remove("success", "error", "info");
+    if (type) exercisesStatusEl.classList.add(type);
+  }
+
   function setActiveRangeButtons(buttons, active) {
     buttons.forEach((b) => b.classList.toggle("active", String(b.dataset.range) === String(active)));
   }
@@ -229,6 +239,65 @@ document.addEventListener("DOMContentLoaded", () => {
     renderHofList(hofEngagementList, byEng, (r) => (r.engagementAvg != null ? r.engagementAvg.toFixed(2) : "—"));
 
     setHofStatus(`✅ Classements mis à jour (${days} jours)`, "success");
+  }
+
+  async function fetchExercises() {
+    if (!SYNC_ENDPOINT) throw new Error("Endpoint non configuré");
+    const url = new URL(SYNC_ENDPOINT);
+    url.searchParams.set("action", "exercises");
+
+    setExercisesStatus("Chargement…", "info");
+    const res = await fetch(url.toString(), { method: "GET", redirect: "follow" });
+    const txt = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt}`);
+
+    let data;
+    try { data = JSON.parse(txt); } catch { throw new Error("Réponse non JSON : " + txt.slice(0, 120)); }
+    if (!data || data.ok !== true || !Array.isArray(data.exercises)) {
+      throw new Error(data && data.error ? data.error : "Format inattendu");
+    }
+
+    renderExercises(data.exercises);
+    if (data.exercises.length) {
+      setExercisesStatus(`✅ ${data.exercises.length} exercice(s) chargés.`, "success");
+    } else {
+      setExercisesStatus("Aucun exercice disponible.", "info");
+    }
+  }
+
+  function renderExercises(exercises) {
+    if (!exercisesBody || !exercisesTable) return;
+    exercisesBody.innerHTML = "";
+    if (!exercises.length) {
+      exercisesTable.classList.add("hidden");
+      return;
+    }
+    exercisesTable.classList.remove("hidden");
+
+    exercises.forEach((ex) => {
+      const tr = document.createElement("tr");
+      const td = (val) => {
+        const cell = document.createElement("td");
+        cell.textContent = val == null ? "" : String(val);
+        return cell;
+      };
+
+      const pctEndurance = ex.pct1rmEndurance ? `${ex.pct1rmEndurance}` : "";
+      const pctHypertrophie = ex.pct1rmHypertrophie ? `${ex.pct1rmHypertrophie}` : "";
+      const pctForce = ex.pct1rmForce ? `${ex.pct1rmForce}` : "";
+
+      const endurance = `${ex.nbSeriesEndurance || ""}x${ex.nbRepsEndurance || ""} · ${pctEndurance} · ${ex.recupSeriesEndurance || ""}/${ex.recupExercicesEndurance || ""}s`;
+      const hypertrophie = `${ex.nbSeriesHypertrophie || ""}x${ex.nbRepsHypertrophie || ""} · ${pctHypertrophie} · ${ex.recupSeriesHypertrophie || ""}/${ex.recupExercicesHypertrophie || ""}s`;
+      const force = `${ex.nbSeriesForce || ""}x${ex.nbRepsForce || ""} · ${pctForce} · ${ex.recupSeriesForce || ""}/${ex.recupExercicesForce || ""}s`;
+
+      tr.appendChild(td(ex.numeroExercice || ""));
+      tr.appendChild(td(ex.nomExercice || ""));
+      tr.appendChild(td(ex.description || ""));
+      tr.appendChild(td(endurance.trim()));
+      tr.appendChild(td(hypertrophie.trim()));
+      tr.appendChild(td(force.trim()));
+      exercisesBody.appendChild(tr);
+    });
   }
 function safeInt(v) {
     if (v === "" || v === null || v === undefined) return NaN;
@@ -312,37 +381,40 @@ function computeLoad(duration, rpe) {
     const raw = localStorage.getItem(STORAGE_SESSIONS_KEY);
     try {
       const parsed = raw ? JSON.parse(raw) : [];
-      sessions = Array.isArray(parsed) ? parsed : [];
+      sessions = Array.isArray(parsed) ? trimSessions(parsed) : [];
     } catch {
       sessions = [];
     }
   }
 
   function saveSessions() {
+    sessions = trimSessions(sessions);
     localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(sessions));
   }
 
   function applyStoredNameUI() {
     const stored = localStorage.getItem(STORAGE_NAME_KEY);
     if (stored) {
-      if (storedNameEl) storedNameEl.textContent = stored;
-      storedNameDisplay?.classList.remove("hidden");
-      athleteNameWrapper?.classList.add("hidden");
-
-      // Évite les blocages Safari iOS (required + champ caché)
-      if (athleteNameInput) {
-        athleteNameInput.value = stored;
-        athleteNameInput.disabled = true;
-        athleteNameInput.removeAttribute("required");
+      if (accountNameEl) {
+        accountNameEl.textContent = stored;
+        accountNameEl.classList.remove("hidden");
+      }
+      if (accountAccessBtn) {
+        accountAccessBtn.classList.add("is-connected");
+        accountAccessBtn.setAttribute("aria-label", "Connecté");
+        const label = accountAccessBtn.querySelector(".account-label");
+        if (label) label.textContent = "Connecté";
       }
     } else {
-      storedNameDisplay?.classList.add("hidden");
-      athleteNameWrapper?.classList.remove("hidden");
-
-      if (athleteNameInput) {
-        athleteNameInput.disabled = false;
-        athleteNameInput.setAttribute("required", "required");
-        athleteNameInput.value = "";
+      if (accountNameEl) {
+        accountNameEl.textContent = "";
+        accountNameEl.classList.add("hidden");
+      }
+      if (accountAccessBtn) {
+        accountAccessBtn.classList.remove("is-connected");
+        accountAccessBtn.setAttribute("aria-label", "Se connecter");
+        const label = accountAccessBtn.querySelector(".account-label");
+        if (label) label.textContent = "Se connecter";
       }
     }
   }
@@ -530,6 +602,19 @@ function computeLoad(duration, rpe) {
     });
   }
 
+  function trimSessions(list) {
+    const now = new Date();
+    const from = new Date(now);
+    from.setDate(from.getDate() - MAX_LOCAL_DAYS);
+
+    const filtered = (list || []).filter((s) => {
+      const dt = parseAnyDateToDate(s.sessionDate);
+      return Number.isFinite(dt.getTime()) && dt >= from;
+    });
+
+    return sortSessionsDesc(filtered).slice(0, MAX_LOCAL_SESSIONS);
+  }
+
   function getMine() {
     const storedName = localStorage.getItem(STORAGE_NAME_KEY) || "";
     return storedName ? sessions.filter((s) => s.athleteName === storedName) : sessions.slice();
@@ -682,8 +767,6 @@ function computeLoad(duration, rpe) {
 
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) {
       kpisEl.innerHTML = "";
       return;
@@ -901,8 +984,6 @@ function drawLineChart(canvas, points, opts) {
   function renderCharts() {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     const inRange = filterByDays(mine, rangeDays);
 
     const rpePts = groupDailyAverage(inRange, "rpe");
@@ -960,7 +1041,7 @@ function drawLineChart(canvas, points, opts) {
   async function fetchLatestSessions() {
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
     if (!storedName) {
-      setStatus("Merci d’abord de renseigner votre nom (en haut).", "error");
+      setStatus("Veuillez vous connecter pour pouvoir récupérer vos séances.", "error");
       return;
     }
     if (!SYNC_ENDPOINT) {
@@ -1015,7 +1096,7 @@ function drawLineChart(canvas, points, opts) {
     // Merge + dedupe
     const byKey = new Map();
     [...sessions, ...fetched].forEach((s) => byKey.set(sessionKey(s), s));
-    sessions = sortSessionsDesc([...byKey.values()]);
+    sessions = trimSessions([...byKey.values()]);
     saveSessions();
 
     updateRangeButtons();
@@ -1047,9 +1128,10 @@ function drawLineChart(canvas, points, opts) {
     }
 
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
-    const athleteName = (storedName || athleteNameInput?.value || "").trim();
+    const athleteName = (storedName || "").trim();
 
     const sessionDate = sessionDateInput?.value || "";
+    const sessionDateISO = toISODateString(sessionDate);
     const timeSlot = timeSlotSelect?.value || "";
 
     const duration = safeInt(durationSelect?.value);
@@ -1061,21 +1143,16 @@ function drawLineChart(canvas, points, opts) {
     const fatigue = safeInt(fatigueSelect?.value);
     const comments = (commentsInput?.value || "").trim();
 
-    if (!athleteName) return setStatus("Merci d’indiquer votre nom.", "error");
-    if (!sessionDate) return setStatus("Merci de sélectionner une date.", "error");
+    if (!athleteName) return setStatus("Veuillez vous connecter pour pouvoir ajouter une séance.", "error");
+    if (!sessionDateISO) return setStatus("Merci de sélectionner une date.", "error");
     if (!timeSlot) return setStatus("Merci de choisir Matin ou Soir.", "error");
     if ([duration, rpe, performance, engagement, fatigue].some((x) => Number.isNaN(x))) {
       return setStatus("Merci de sélectionner toutes les valeurs.", "error");
     }
 
-    if (!storedName) {
-      localStorage.setItem(STORAGE_NAME_KEY, athleteName);
-      applyStoredNameUI();
-    }
-
     const session = {
       athleteName,
-      sessionDate,
+      sessionDate: sessionDateISO,
       timeSlot,
       duration,
       distance: distance || "",
@@ -1087,7 +1164,7 @@ function drawLineChart(canvas, points, opts) {
     };
 
     sessions.unshift(session);
-    sessions = sortSessionsDesc(sessions);
+    sessions = trimSessions(sessions);
     saveSessions();
 
     updateRangeButtons();
@@ -1166,6 +1243,12 @@ function drawLineChart(canvas, points, opts) {
   profileAccessBtn?.addEventListener("click", () => {
     setStatus("", "");
     setAppView("profile");
+    if (!document.getElementById("tab-strength")?.classList.contains("hidden")) {
+      fetchExercises().catch((err) => {
+        console.error(err);
+        setExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
+      });
+    }
   });
 
   profileExitBtn?.addEventListener("click", () => {
@@ -1228,6 +1311,19 @@ function drawLineChart(canvas, points, opts) {
       const tab = btn.getAttribute("data-tab");
       document.getElementById("tab-strength")?.classList.toggle("hidden", tab !== "strength");
       document.getElementById("tab-performances")?.classList.toggle("hidden", tab !== "performances");
+      if (tab === "strength") {
+        fetchExercises().catch((err) => {
+          console.error(err);
+          setExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
+        });
+      }
+    });
+  });
+
+  exercisesRefreshBtn?.addEventListener("click", () => {
+    fetchExercises().catch((err) => {
+      console.error(err);
+      setExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
     });
   });
 
@@ -1267,10 +1363,17 @@ function drawLineChart(canvas, points, opts) {
     }
   });
 
-changeNameBtn?.addEventListener("click", () => {
-    localStorage.removeItem(STORAGE_NAME_KEY);
+  accountAccessBtn?.addEventListener("click", () => {
+    const name = prompt("Nom du nageur :");
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setStatus("Nom invalide.", "error");
+      return;
+    }
+    localStorage.setItem(STORAGE_NAME_KEY, trimmed);
     applyStoredNameUI();
-    setStatus("Nom réinitialisé.", "info");
+    setStatus(`Connecté en tant que ${trimmed}.`, "success");
     updateTable();
     renderKpis();
     renderCharts();
@@ -1306,8 +1409,6 @@ changeNameBtn?.addEventListener("click", () => {
   });exportCsvBtn?.addEventListener("click", () => {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) return alert("Aucune séance à exporter.");
 
     const headers = [
@@ -1353,8 +1454,6 @@ changeNameBtn?.addEventListener("click", () => {
   exportJsonBtn?.addEventListener("click", () => {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) return alert("Aucune séance à exporter.");
 
     const blob = new Blob([JSON.stringify(mine, null, 2)], {
