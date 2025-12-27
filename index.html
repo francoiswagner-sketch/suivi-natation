@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suivi des séances de natation</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="club-header">
+  <div class="club-header-bar">
+    <div class="club-header-left">
+      <img src="logo-eac.png" alt="Erstein Aquatic Club" class="club-logo" />
+      <div class="club-text">
+        <h1>Erstein Aquatic Club</h1>
+        <h2>Groupe Élite · Pôle Compétition</h2>
+        <p>Suivi quotidien des charges et ressentis</p>
+      </div>
+    </div>
+
+    <div class="club-header-center">
+      <button id="hall-of-fame" type="button" class="hof-btn">Hall of Fame</button>
+    </div>
+
+    <div class="club-header-right">
+      <div class="club-header-actions">
+        <button id="coach-access" type="button" class="coach-btn">Accès coach</button>
+        <button id="profile-access" type="button" class="profile-btn">Ma fiche nageur</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+    <main>
+      <form id="session-form">
+        <div id="athleteNameWrapper" class="form-group">
+          <label for="athleteName">Votre nom :</label>
+          <input
+            type="text"
+            id="athleteName"
+            name="athleteName"
+            placeholder="Nom du nageur"
+            required
+          />
+        </div>
+
+        <div id="storedNameDisplay" class="form-group hidden">
+          <label>Nom :</label>
+          <span id="storedName"></span>
+          <button type="button" id="changeName" class="secondary">Changer de nom</button>
+        </div>
+
+        <div class="form-group">
+          <label for="sessionDate">Date de la séance :</label>
+          <input type="date" id="sessionDate" name="sessionDate" required />
+        </div>
+
+        <div class="form-group">
+          <label for="timeSlot">Créneau :</label>
+          <select id="timeSlot" name="timeSlot" required>
+            <option value="matin" selected>Matin</option>
+            <option value="soir">Soir</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="duration">Durée de la séance</label>
+          <select id="duration" name="duration" required>
+            <option value="60">1h</option>
+            <option value="75">1h15</option>
+            <option value="90">1h30</option>
+            <option value="105">1h45</option>
+            <option value="120" selected>2h — standard</option>
+            <option value="135">2h15</option>
+            <option value="150">2h30</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="distance">Kilométrage (facultatif)</label>
+          <select id="distance" name="distance">
+            <option value="">—</option>
+          </select>
+          <div class="helper">De 2000m à 7000m, par pas de 100m.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="rpe">Difficulté (1–10)</label>
+          <select id="rpe" name="rpe" required>
+            <option value="1">1 — très facile (échauffement)</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5 — assez dur (travail)</option>
+            <option value="6">6</option>
+            <option value="7">7 — très dur (proche seuil)</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10 — maximal (all‑out)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="performance">Performance perçue (1–10)</label>
+          <select id="performance" name="performance" required>
+            <option value="1">1 — très mauvaise</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5 — moyen</option>
+            <option value="6">6</option>
+            <option value="7">7 — bon</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10 — exceptionnel</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="engagement">Engagement (1–10)</label>
+          <select id="engagement" name="engagement" required>
+            <option value="1">1 — pas engagé</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5 — moyen</option>
+            <option value="6">6</option>
+            <option value="7">7 — très bon</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10 — total</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="fatigue">Fatigue en fin de séance (1–10)</label>
+          <select id="fatigue" name="fatigue" required>
+            <option value="1">1 — frais</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5 — fatigue moyenne</option>
+            <option value="6">6</option>
+            <option value="7">7 — très fatigué</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10 — KO (à signaler)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="comments">Commentaires (facultatif) :</label>
+          <textarea id="comments" name="comments" rows="3" placeholder="Notes complémentaires…"></textarea>
+        </div>
+
+        <button id="submit-btn" type="submit">Enregistrer la séance</button>
+        <div id="sync-status" class="sync-status" aria-live="polite"></div>
+      </form>
+
+
+      <!-- ===== Vue Coach (protégée par mot de passe) ===== -->
+      <section id="coach-section" class="hidden">
+        <div class="section-head">
+          <h2>Vue Coach</h2>
+          <button id="coach-exit" class="secondary" type="button">Retour nageur</button>
+        </div>
+
+        <div class="coach-controls">
+          <label for="coach-athlete">Nageur :</label>
+          <select id="coach-athlete">
+            <option value="" selected>— Sélectionner un nageur —</option>
+          </select>
+          <button id="coach-refresh" class="secondary" type="button">Rafraîchir</button>
+        </div>
+
+        <div class="kpi-toolbar">
+          <div class="kpi-range" role="tablist" aria-label="Période KPIs coach">
+            <button type="button" class="range-btn" data-scope="coach" data-range="7">7 jours</button>
+            <button type="button" class="range-btn" data-scope="coach" data-range="30">30 jours</button>
+            <button type="button" class="range-btn" data-scope="coach" data-range="365">365 jours</button>
+          </div>
+        </div>
+
+        <div id="coach-kpis" class="kpis" aria-live="polite"></div>
+
+        <div class="charts-grid" aria-label="Graphiques coach">
+          <div class="chart-card">
+            <div class="chart-title">Difficulté</div>
+            <canvas id="coach-chart-rpe" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Performance perçue</div>
+            <canvas id="coach-chart-performance" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Engagement</div>
+            <canvas id="coach-chart-engagement" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Fatigue</div>
+            <canvas id="coach-chart-fatigue" height="160"></canvas>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="coach-toggle-history" class="secondary" type="button">Afficher l'historique</button>
+        </div>
+
+        <div id="coach-history" class="hidden">
+          <div class="info" id="coach-no-sessions">Aucune séance pour ce nageur.</div>
+          <table id="coach-sessions-table" class="hidden">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Créneau</th>
+                <th>Durée</th>
+                <th>Km</th>
+                <th>Difficulté</th>
+                <th>Performance</th>
+                <th>Engagement</th>
+                <th>Fatigue</th>
+                <th>Charge</th>
+                <th>Commentaires</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+      </section>
+      <!-- ===== Ma fiche nageur ===== -->
+      <section id="profile-section" class="hidden">
+        <div class="section-head">
+          <h2>Ma fiche nageur</h2>
+          <button id="profile-exit" class="secondary" type="button">Retour</button>
+        </div>
+
+        <div class="profile-tabs">
+          <button type="button" class="tab-btn active" data-tab="strength">Musculation</button>
+          <button type="button" class="tab-btn" data-tab="performances">Mes performances</button>
+        </div>
+
+        <div id="tab-strength" class="tab-panel">
+          <div class="info card">
+            Bientôt : suivi des séances de musculation (exercices, séries, charges).
+          </div>
+        </div>
+
+        <div id="tab-performances" class="tab-panel hidden">
+          <div class="info card">
+            Bientôt : vos performances et records personnels par épreuve.
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Hall of Fame ===== -->
+      <section id="hof-section" class="hidden">
+        <div class="section-head">
+          <h2>Hall of Fame</h2>
+          <button id="hof-exit" class="secondary" type="button">Retour</button>
+        </div>
+
+        <div class="kpi-toolbar">
+          <div class="kpi-range">
+            <button type="button" class="hof-range-btn range-btn" data-range="7">7 jours</button>
+            <button type="button" class="hof-range-btn range-btn" data-range="30">30 jours</button>
+            <button type="button" class="hof-range-btn range-btn" data-range="365">365 jours</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="hof-refresh" class="secondary" type="button">Rafraîchir</button>
+        </div>
+
+        <div id="hof-status" class="sync-status" aria-live="polite"></div>
+
+        <div class="card">
+          <h3>🏊‍♂️ Kilométrage total</h3>
+          <ol id="hof-distance" class="hof-list"></ol>
+        </div>
+
+        <div class="card">
+          <h3>⭐ Performance moyenne</h3>
+          <ol id="hof-performance" class="hof-list"></ol>
+        </div>
+
+        <div class="card">
+          <h3>🔥 Engagement moyen</h3>
+          <ol id="hof-engagement" class="hof-list"></ol>
+        </div>
+
+        <div class="actions">
+          <button id="club-records" class="secondary" type="button">Records du club</button>
+        </div>
+
+        <div id="club-records-panel" class="hidden card">
+          <h3>Records du club</h3>
+          <p class="subtitle">Bientôt : liste des records par épreuve.</p>
+        </div>
+      </section>
+
+
+
+      <section id="sessions-section">
+        <div class="section-head">
+          <h2>Mes séances enregistrées</h2>
+          <button id="fetch-latest" class="secondary" type="button">
+            Récupérer mes dernières séances
+          </button>
+        </div>
+
+        
+        <div class="kpi-toolbar">
+          <div class="kpi-range" role="tablist" aria-label="Période KPIs">
+            <button type="button" class="range-btn" data-range="7">7 jours</button>
+            <button type="button" class="range-btn" data-range="30">30 jours</button>
+            <button type="button" class="range-btn" data-range="365">365 jours</button>
+          </div>
+        </div>
+
+<div id="kpis" class="kpis" aria-live="polite"></div>
+
+        <div class="charts-grid" aria-label="Graphiques des ressentis">
+          <div class="chart-card">
+            <div class="chart-title">Difficulté</div>
+            <canvas id="chart-rpe" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Performance perçue</div>
+            <canvas id="chart-performance" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Engagement</div>
+            <canvas id="chart-engagement" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Fatigue</div>
+            <canvas id="chart-fatigue" height="160"></canvas>
+          </div>
+        </div>
+
+
+
+        <div class="history-toggle">
+          <button id="toggle-history" class="secondary" type="button">Afficher l’historique</button>
+        </div>
+
+        <div id="history-panel" class="hidden">
+<div id="no-sessions" class="info">Aucune séance enregistrée pour le moment.</div>
+
+        <table id="sessions-table" class="hidden">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Date</th>
+              <th>Créneau</th>
+              <th>Durée (min)</th>
+              <th>Km</th>
+              <th>Difficulté</th>
+              <th>Performance</th>
+              <th>Engagement</th>
+              <th>Fatigue</th>
+              <th>Charge</th>
+              <th>Commentaires</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <div class="actions">
+          <button id="export-csv" class="secondary" type="button">Exporter en CSV</button>
+          <button id="export-json" class="secondary" type="button">Exporter en JSON</button>
+          <button id="clear-data" class="danger" type="button">Supprimer toutes les données</button>
+        </div>
+      
+        </div>
+</section>
+    </main>
+
+    <footer>
+      <p>
+        Les données sont conservées localement sur votre appareil et synchronisées automatiquement si un point de synchronisation est configuré.
+        L’exportation est toujours disponible à titre facultatif.
+      </p>
+    </footer>
+
+    <script src="script.js?v=18"></script>
+  </body>
+</html>
