@@ -105,6 +105,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const coachTabButtons = Array.from(document.querySelectorAll(".coach-tabs .tab-btn"));
   const coachTabSwim = document.getElementById("coach-tab-swim");
   const coachTabStrength = document.getElementById("coach-tab-strength");
+  const coachExercisesBtn = document.getElementById("coach-exercises");
+  const coachExercisesPanel = document.getElementById("coach-exercises-panel");
+  const coachExercisesRefreshBtn = document.getElementById("coach-exercises-refresh");
+  const coachExercisesStatusEl = document.getElementById("coach-exercises-status");
+  const coachExercisesList = document.getElementById("coach-exercises-list");
 
 
 
@@ -166,6 +171,13 @@ document.addEventListener("DOMContentLoaded", () => {
     exercisesStatusEl.textContent = message || "";
     exercisesStatusEl.classList.remove("success", "error", "info");
     if (type) exercisesStatusEl.classList.add(type);
+  }
+
+  function setCoachExercisesStatus(message, type = "") {
+    if (!coachExercisesStatusEl) return;
+    coachExercisesStatusEl.textContent = message || "";
+    coachExercisesStatusEl.classList.remove("success", "error", "info");
+    if (type) coachExercisesStatusEl.classList.add(type);
   }
 
   function setActiveRangeButtons(buttons, active) {
@@ -261,10 +273,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     renderExercises(data.exercises);
+    renderCoachExercises(data.exercises);
     if (data.exercises.length) {
       setExercisesStatus(`✅ ${data.exercises.length} exercice(s) chargés.`, "success");
+      setCoachExercisesStatus(`✅ ${data.exercises.length} exercice(s) chargés.`, "success");
     } else {
       setExercisesStatus("Aucun exercice disponible.", "info");
+      setCoachExercisesStatus("Aucun exercice disponible.", "info");
     }
   }
 
@@ -300,6 +315,30 @@ document.addEventListener("DOMContentLoaded", () => {
       tr.appendChild(td(hypertrophie.trim()));
       tr.appendChild(td(force.trim()));
       exercisesBody.appendChild(tr);
+    });
+  }
+
+  function renderCoachExercises(exercises) {
+    if (!coachExercisesList) return;
+    coachExercisesList.innerHTML = "";
+    if (!exercises.length) return;
+
+    exercises.forEach((ex) => {
+      const item = document.createElement("div");
+      item.className = "exercise-item";
+
+      const title = document.createElement("div");
+      title.className = "exercise-title";
+      title.textContent = ex.nomExercice || "";
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary exercise-open";
+      button.textContent = "Ouvrir fiche";
+
+      item.appendChild(title);
+      item.appendChild(button);
+      coachExercisesList.appendChild(item);
     });
   }
 function safeInt(v) {
@@ -1333,6 +1372,21 @@ function drawLineChart(canvas, points, opts) {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.tab || "coach-swim";
       setCoachTab(tab);
+    });
+  });
+
+  coachExercisesBtn?.addEventListener("click", () => {
+    coachExercisesPanel?.classList.remove("hidden");
+    fetchExercises().catch((err) => {
+      console.error(err);
+      setCoachExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
+    });
+  });
+
+  coachExercisesRefreshBtn?.addEventListener("click", () => {
+    fetchExercises().catch((err) => {
+      console.error(err);
+      setCoachExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
     });
   });
 

@@ -530,3 +530,33 @@ canvas{
 .hof-list li:last-child{border-bottom:none;}
 .hof-name{font-weight:600;}
 .hof-metric{color:var(--muted);font-variant-numeric:tabular-nums;}
+
+/* Exercises list (coach) */
+.exercises-list {
+  display: grid;
+  gap: 12px;
+}
+
+.exercise-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.exercise-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.exercise-open {
+  border-radius: 999px;
+  padding: 0.6rem 1.2rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+}
