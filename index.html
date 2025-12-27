@@ -24,6 +24,18 @@
 
     <div class="club-header-right">
       <div class="club-header-actions">
+        <div class="account-wrap">
+          <span id="account-name" class="account-name hidden"></span>
+          <button id="account-access" type="button" class="account-btn" aria-label="Se connecter">
+          <span class="account-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"></circle>
+              <path d="M4 20c0-4.2 3.6-7 8-7s8 2.8 8 7"></path>
+            </svg>
+          </span>
+          <span class="account-label">Se connecter</span>
+        </button>
+        </div>
         <button id="coach-access" type="button" class="coach-btn">Accès coach</button>
         <button id="profile-access" type="button" class="profile-btn">Ma fiche nageur</button>
       </div>
@@ -33,23 +45,6 @@
 
     <main>
       <form id="session-form">
-        <div id="athleteNameWrapper" class="form-group">
-          <label for="athleteName">Votre nom :</label>
-          <input
-            type="text"
-            id="athleteName"
-            name="athleteName"
-            placeholder="Nom du nageur"
-            required
-          />
-        </div>
-
-        <div id="storedNameDisplay" class="form-group hidden">
-          <label>Nom :</label>
-          <span id="storedName"></span>
-          <button type="button" id="changeName" class="secondary">Changer de nom</button>
-        </div>
-
         <div class="form-group">
           <label for="sessionDate">Date de la séance :</label>
           <input type="date" id="sessionDate" name="sessionDate" required />
@@ -165,6 +160,12 @@
           <button id="coach-exit" class="secondary" type="button">Retour nageur</button>
         </div>
 
+        <div class="profile-tabs coach-tabs">
+          <button type="button" class="tab-btn active" data-tab="coach-swim">Suivi nageurs</button>
+          <button type="button" class="tab-btn" data-tab="coach-strength">Musculation</button>
+        </div>
+
+        <div id="coach-tab-swim" class="tab-panel">
         <div class="coach-controls">
           <label for="coach-athlete">Nageur :</label>
           <select id="coach-athlete">
@@ -227,6 +228,25 @@
           </table>
         </div>
 
+        </div>
+
+        <div id="coach-tab-strength" class="tab-panel hidden">
+          <div class="actions">
+            <button id="coach-exercises" class="secondary" type="button">Voir/modifier exercices</button>
+            <button id="coach-strength-session" class="secondary" type="button">Créer/Modifier une séance</button>
+          </div>
+          <div id="coach-exercises-panel" class="hidden">
+            <div class="section-head">
+              <h3>Liste des exercices</h3>
+              <div class="section-actions">
+                <div id="coach-exercises-status" class="sync-status" aria-live="polite"></div>
+                <button id="coach-exercises-refresh" class="secondary" type="button">Rafraîchir</button>
+              </div>
+            </div>
+            <div id="coach-exercises-list" class="exercises-list"></div>
+          </div>
+        </div>
+
       </section>
       <!-- ===== Ma fiche nageur ===== -->
       <section id="profile-section" class="hidden">
@@ -244,6 +264,26 @@
           <div class="info card">
             Bientôt : suivi des séances de musculation (exercices, séries, charges).
           </div>
+          <div class="card">
+            <div class="section-head">
+              <h3>Base d'exercices</h3>
+              <button id="exercises-refresh" class="secondary" type="button">Rafraîchir</button>
+            </div>
+            <div id="exercises-status" class="sync-status" aria-live="polite"></div>
+            <table id="exercises-table" class="hidden">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Exercice</th>
+                  <th>Description</th>
+                  <th>Endurance</th>
+                  <th>Hypertrophie</th>
+                  <th>Force</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
 
         <div id="tab-performances" class="tab-panel hidden">
@@ -257,7 +297,10 @@
       <section id="hof-section" class="hidden">
         <div class="section-head">
           <h2>Hall of Fame</h2>
-          <button id="hof-exit" class="secondary" type="button">Retour</button>
+          <div class="section-actions">
+            <button id="hof-refresh" class="secondary" type="button">Rafraîchir</button>
+            <button id="hof-exit" class="secondary" type="button">Retour</button>
+          </div>
         </div>
 
         <div class="kpi-toolbar">
@@ -266,10 +309,6 @@
             <button type="button" class="hof-range-btn range-btn" data-range="30">30 jours</button>
             <button type="button" class="hof-range-btn range-btn" data-range="365">365 jours</button>
           </div>
-        </div>
-
-        <div class="actions">
-          <button id="hof-refresh" class="secondary" type="button">Rafraîchir</button>
         </div>
 
         <div id="hof-status" class="sync-status" aria-live="polite"></div>
