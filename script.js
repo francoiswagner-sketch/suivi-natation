@@ -102,6 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const coachSessionsTable = document.getElementById("coach-sessions-table");
   const coachSessionsBody = coachSessionsTable ? coachSessionsTable.querySelector("tbody") : null;
   const coachNoSessions = document.getElementById("coach-no-sessions");
+  const coachTabButtons = Array.from(document.querySelectorAll(".coach-tabs .tab-btn"));
+  const coachTabSwim = document.getElementById("coach-tab-swim");
+  const coachTabStrength = document.getElementById("coach-tab-strength");
 
 
 
@@ -1239,6 +1242,12 @@ function drawLineChart(canvas, points, opts) {
     renderCharts();
   });
 
+  function setCoachTab(tab) {
+    coachTabButtons.forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    coachTabSwim?.classList.toggle("hidden", tab !== "coach-swim");
+    coachTabStrength?.classList.toggle("hidden", tab !== "coach-strength");
+  }
+
   // ====== Profile + Hall of Fame views ======
   profileAccessBtn?.addEventListener("click", () => {
     setStatus("", "");
@@ -1317,6 +1326,13 @@ function drawLineChart(canvas, points, opts) {
           setExercisesStatus("⚠️ Impossible de charger : " + (err?.message || "erreur"), "error");
         });
       }
+    });
+  });
+
+  coachTabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab || "coach-swim";
+      setCoachTab(tab);
     });
   });
 
@@ -1498,6 +1514,7 @@ function drawLineChart(canvas, points, opts) {
   loadSessions();
   ensureCoachOptionsFromSessions();
   if (sessionStorage.getItem("coachAccess") === "1") { setCoachMode(true); }
+  setCoachTab("coach-swim");
 
   populateDistanceOptions();
   applyStoredNameUI();

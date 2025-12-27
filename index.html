@@ -160,6 +160,12 @@
           <button id="coach-exit" class="secondary" type="button">Retour nageur</button>
         </div>
 
+        <div class="profile-tabs coach-tabs">
+          <button type="button" class="tab-btn active" data-tab="coach-swim">Suivi nageurs</button>
+          <button type="button" class="tab-btn" data-tab="coach-strength">Musculation</button>
+        </div>
+
+        <div id="coach-tab-swim" class="tab-panel">
         <div class="coach-controls">
           <label for="coach-athlete">Nageur :</label>
           <select id="coach-athlete">
@@ -220,6 +226,15 @@
             </thead>
             <tbody></tbody>
           </table>
+        </div>
+
+        </div>
+
+        <div id="coach-tab-strength" class="tab-panel hidden">
+          <div class="actions">
+            <button id="coach-exercises" class="secondary" type="button">Voir/modifier exercices</button>
+            <button id="coach-strength-session" class="secondary" type="button">Créer/Modifier une séance</button>
+          </div>
         </div>
 
       </section>
