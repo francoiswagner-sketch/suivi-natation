@@ -152,6 +152,10 @@ button.danger {
   flex-wrap: wrap;
 }
 
+.section-actions .sync-status {
+  margin-top: 0;
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

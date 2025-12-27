@@ -238,9 +238,11 @@
           <div id="coach-exercises-panel" class="hidden">
             <div class="section-head">
               <h3>Liste des exercices</h3>
-              <button id="coach-exercises-refresh" class="secondary" type="button">Rafraîchir</button>
+              <div class="section-actions">
+                <div id="coach-exercises-status" class="sync-status" aria-live="polite"></div>
+                <button id="coach-exercises-refresh" class="secondary" type="button">Rafraîchir</button>
+              </div>
             </div>
-            <div id="coach-exercises-status" class="sync-status" aria-live="polite"></div>
             <div id="coach-exercises-list" class="exercises-list"></div>
           </div>
         </div>
