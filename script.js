@@ -13,15 +13,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_SESSIONS_KEY = "swimSessions";
   const STORAGE_NAME_KEY = "swimmerName";
   const STORAGE_RANGE_KEY = "kpiRangeDays"; // 7 | 30 | 365
+  const MAX_LOCAL_SESSIONS = 400;
+  const MAX_LOCAL_DAYS = 365;
 
   // ====== DOM ======
   const form = document.getElementById("session-form");
 
-  const athleteNameWrapper = document.getElementById("athleteNameWrapper");
-  const athleteNameInput = document.getElementById("athleteName");
-  const storedNameDisplay = document.getElementById("storedNameDisplay");
-  const storedNameEl = document.getElementById("storedName");
-  const changeNameBtn = document.getElementById("changeName");
+  const accountAccessBtn = document.getElementById("account-access");
+  const accountNameEl = document.getElementById("account-name");
 
   const sessionDateInput = document.getElementById("sessionDate");
   const timeSlotSelect = document.getElementById("timeSlot");
@@ -312,37 +311,28 @@ function computeLoad(duration, rpe) {
     const raw = localStorage.getItem(STORAGE_SESSIONS_KEY);
     try {
       const parsed = raw ? JSON.parse(raw) : [];
-      sessions = Array.isArray(parsed) ? parsed : [];
+      sessions = Array.isArray(parsed) ? trimSessions(parsed) : [];
     } catch {
       sessions = [];
     }
   }
 
   function saveSessions() {
+    sessions = trimSessions(sessions);
     localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(sessions));
   }
 
   function applyStoredNameUI() {
     const stored = localStorage.getItem(STORAGE_NAME_KEY);
     if (stored) {
-      if (storedNameEl) storedNameEl.textContent = stored;
-      storedNameDisplay?.classList.remove("hidden");
-      athleteNameWrapper?.classList.add("hidden");
-
-      // Évite les blocages Safari iOS (required + champ caché)
-      if (athleteNameInput) {
-        athleteNameInput.value = stored;
-        athleteNameInput.disabled = true;
-        athleteNameInput.removeAttribute("required");
+      if (accountNameEl) {
+        accountNameEl.textContent = stored;
+        accountNameEl.classList.remove("hidden");
       }
     } else {
-      storedNameDisplay?.classList.add("hidden");
-      athleteNameWrapper?.classList.remove("hidden");
-
-      if (athleteNameInput) {
-        athleteNameInput.disabled = false;
-        athleteNameInput.setAttribute("required", "required");
-        athleteNameInput.value = "";
+      if (accountNameEl) {
+        accountNameEl.textContent = "";
+        accountNameEl.classList.add("hidden");
       }
     }
   }
@@ -530,6 +520,19 @@ function computeLoad(duration, rpe) {
     });
   }
 
+  function trimSessions(list) {
+    const now = new Date();
+    const from = new Date(now);
+    from.setDate(from.getDate() - MAX_LOCAL_DAYS);
+
+    const filtered = (list || []).filter((s) => {
+      const dt = parseAnyDateToDate(s.sessionDate);
+      return Number.isFinite(dt.getTime()) && dt >= from;
+    });
+
+    return sortSessionsDesc(filtered).slice(0, MAX_LOCAL_SESSIONS);
+  }
+
   function getMine() {
     const storedName = localStorage.getItem(STORAGE_NAME_KEY) || "";
     return storedName ? sessions.filter((s) => s.athleteName === storedName) : sessions.slice();
@@ -682,8 +685,6 @@ function computeLoad(duration, rpe) {
 
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) {
       kpisEl.innerHTML = "";
       return;
@@ -901,8 +902,6 @@ function drawLineChart(canvas, points, opts) {
   function renderCharts() {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     const inRange = filterByDays(mine, rangeDays);
 
     const rpePts = groupDailyAverage(inRange, "rpe");
@@ -960,7 +959,7 @@ function drawLineChart(canvas, points, opts) {
   async function fetchLatestSessions() {
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
     if (!storedName) {
-      setStatus("Merci d’abord de renseigner votre nom (en haut).", "error");
+      setStatus("Veuillez vous connecter pour pouvoir récupérer vos séances.", "error");
       return;
     }
     if (!SYNC_ENDPOINT) {
@@ -1015,7 +1014,7 @@ function drawLineChart(canvas, points, opts) {
     // Merge + dedupe
     const byKey = new Map();
     [...sessions, ...fetched].forEach((s) => byKey.set(sessionKey(s), s));
-    sessions = sortSessionsDesc([...byKey.values()]);
+    sessions = trimSessions([...byKey.values()]);
     saveSessions();
 
     updateRangeButtons();
@@ -1047,9 +1046,10 @@ function drawLineChart(canvas, points, opts) {
     }
 
     const storedName = localStorage.getItem(STORAGE_NAME_KEY);
-    const athleteName = (storedName || athleteNameInput?.value || "").trim();
+    const athleteName = (storedName || "").trim();
 
     const sessionDate = sessionDateInput?.value || "";
+    const sessionDateISO = toISODateString(sessionDate);
     const timeSlot = timeSlotSelect?.value || "";
 
     const duration = safeInt(durationSelect?.value);
@@ -1061,21 +1061,16 @@ function drawLineChart(canvas, points, opts) {
     const fatigue = safeInt(fatigueSelect?.value);
     const comments = (commentsInput?.value || "").trim();
 
-    if (!athleteName) return setStatus("Merci d’indiquer votre nom.", "error");
-    if (!sessionDate) return setStatus("Merci de sélectionner une date.", "error");
+    if (!athleteName) return setStatus("Veuillez vous connecter pour pouvoir ajouter une séance.", "error");
+    if (!sessionDateISO) return setStatus("Merci de sélectionner une date.", "error");
     if (!timeSlot) return setStatus("Merci de choisir Matin ou Soir.", "error");
     if ([duration, rpe, performance, engagement, fatigue].some((x) => Number.isNaN(x))) {
       return setStatus("Merci de sélectionner toutes les valeurs.", "error");
     }
 
-    if (!storedName) {
-      localStorage.setItem(STORAGE_NAME_KEY, athleteName);
-      applyStoredNameUI();
-    }
-
     const session = {
       athleteName,
-      sessionDate,
+      sessionDate: sessionDateISO,
       timeSlot,
       duration,
       distance: distance || "",
@@ -1087,7 +1082,7 @@ function drawLineChart(canvas, points, opts) {
     };
 
     sessions.unshift(session);
-    sessions = sortSessionsDesc(sessions);
+    sessions = trimSessions(sessions);
     saveSessions();
 
     updateRangeButtons();
@@ -1267,10 +1262,17 @@ function drawLineChart(canvas, points, opts) {
     }
   });
 
-changeNameBtn?.addEventListener("click", () => {
-    localStorage.removeItem(STORAGE_NAME_KEY);
+  accountAccessBtn?.addEventListener("click", () => {
+    const name = prompt("Nom du nageur :");
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setStatus("Nom invalide.", "error");
+      return;
+    }
+    localStorage.setItem(STORAGE_NAME_KEY, trimmed);
     applyStoredNameUI();
-    setStatus("Nom réinitialisé.", "info");
+    setStatus(`Connecté en tant que ${trimmed}.`, "success");
     updateTable();
     renderKpis();
     renderCharts();
@@ -1306,8 +1308,6 @@ changeNameBtn?.addEventListener("click", () => {
   });exportCsvBtn?.addEventListener("click", () => {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) return alert("Aucune séance à exporter.");
 
     const headers = [
@@ -1353,8 +1353,6 @@ changeNameBtn?.addEventListener("click", () => {
   exportJsonBtn?.addEventListener("click", () => {
     const mine = getMine();
 
-    const MAX_ROWS = 30;
-    const displayList = mine.slice(0, MAX_ROWS);
     if (!mine.length) return alert("Aucune séance à exporter.");
 
     const blob = new Blob([JSON.stringify(mine, null, 2)], {

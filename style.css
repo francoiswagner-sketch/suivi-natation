@@ -145,6 +145,13 @@ button.danger {
   font-size: 1.15rem;
 }
 
+.section-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -410,6 +417,34 @@ canvas{
   align-items: flex-end;
 }
 
+.account-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.account-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.account-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .hof-btn,
 .profile-btn,
 .coach-btn {
@@ -429,6 +464,10 @@ canvas{
 .profile-btn:hover,
 .coach-btn:hover {
   background: rgba(255, 255, 255, 0.18);
+}
+
+.account-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 @media (max-width: 640px) {
