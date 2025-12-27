@@ -145,6 +145,13 @@ button.danger {
   font-size: 1.15rem;
 }
 
+.section-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
